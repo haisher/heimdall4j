@@ -1,7 +1,5 @@
 package com.heimdall4j.core.exception;
 
-import com.heimdall4j.core.StateName;
-
 /**
  * Thrown when a call is attempted while the circuit breaker is OPEN.
  */
@@ -11,6 +9,7 @@ public final class CircuitOpenException extends RuntimeException {
 
     public CircuitOpenException(String circuitBreakerName) {
         super("CircuitBreaker '%s' is OPEN and not accepting calls".formatted(circuitBreakerName));
+
         this.circuitBreakerName = circuitBreakerName;
     }
 

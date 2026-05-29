@@ -70,6 +70,7 @@ public final class CircuitBreaker {
                 case State.Closed closed -> {
                     return executeInClosed(supplier, closed);
                 }
+
                 case State.Open open -> {
                     Instant now = Instant.now(config.clock());
                     if (now.isAfter(open.openedAt().plus(config.waitDurationInOpenState()))) {
@@ -84,6 +85,7 @@ public final class CircuitBreaker {
                     }
                     throw new CircuitOpenException(name);
                 }
+
                 case State.HalfOpen halfOpen -> {
                     return executeInHalfOpen(supplier, halfOpen, fallback);
                 }
@@ -130,6 +132,7 @@ public final class CircuitBreaker {
 
     private <T> T executeInClosed(Supplier<T> supplier, State.Closed closed) {
         Instant start = Instant.now(config.clock());
+
         try {
             T result = executeWithTimeout(supplier);
             recordSuccess(closed);
@@ -159,6 +162,7 @@ public final class CircuitBreaker {
         }
 
         Instant start = Instant.now(config.clock());
+
         try {
             T result = executeWithTimeout(supplier);
             recordHalfOpenSuccess(halfOpen);
@@ -213,6 +217,7 @@ public final class CircuitBreaker {
 
     private void recordHalfOpenFailure(State.HalfOpen halfOpen) {
         var openState = new State.Open(Instant.now(config.clock()));
+
         if (stateRef.compareAndSet(halfOpen, openState)) {
             emit(new CircuitBreakerEvent.StateTransition(name, StateName.HALF_OPEN, StateName.OPEN, Instant.now(config.clock())));
         }
@@ -246,6 +251,7 @@ public final class CircuitBreaker {
         if (e instanceof RuntimeException re) {
             return re;
         }
+
         return new RuntimeException(e);
     }
 }

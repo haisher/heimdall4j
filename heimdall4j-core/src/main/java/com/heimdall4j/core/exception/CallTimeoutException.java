@@ -12,6 +12,7 @@ public final class CallTimeoutException extends RuntimeException {
 
     public CallTimeoutException(String circuitBreakerName, Duration configuredTimeout) {
         super("CircuitBreaker '%s' call timed out after %s".formatted(circuitBreakerName, configuredTimeout));
+
         this.circuitBreakerName = circuitBreakerName;
         this.configuredTimeout = configuredTimeout;
     }
