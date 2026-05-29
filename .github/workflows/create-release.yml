@@ -124,6 +124,7 @@ jobs:
 
       - name: Push changes and tag
         run: |
+          git pull --rebase origin main
           git push origin main
           git push origin "v${{ steps.version.outputs.version }}"
 
