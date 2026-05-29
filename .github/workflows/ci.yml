@@ -50,3 +50,11 @@ jobs:
           name: coverage-reports
           path: '**/build/reports/jacoco/'
           retention-days: 7
+
+      - name: Upload coverage to Codecov
+        if: always()
+        uses: codecov/codecov-action@v5
+        with:
+          files: '**/build/reports/jacoco/test/jacocoTestReport.xml'
+          flags: unittests
+          fail_ci_if_error: false

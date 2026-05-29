@@ -2,6 +2,7 @@
 
 [![CI](https://github.com/haisher/heimdall4j/actions/workflows/ci.yml/badge.svg)](https://github.com/haisher/heimdall4j/actions/workflows/ci.yml)
 [![Maven Central](https://img.shields.io/maven-central/v/io.github.haisher/heimdall4j-core)](https://central.sonatype.com/artifact/io.github.haisher/heimdall4j-core)
+[![codecov](https://codecov.io/gh/haisher/heimdall4j/graph/badge.svg)](https://codecov.io/gh/haisher/heimdall4j)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 Modern Java 25 circuit breaker library — slim, zero-dependency core with Spring Boot integration.
