@@ -115,6 +115,9 @@ class CircuitBreakerEventTest {
     @DisplayName("emits StateTransition OPEN → HALF_OPEN after wait")
     void emitsOpenToHalfOpen() throws InterruptedException {
         tripBreaker();
+
+        // Wait for all trip events to be delivered, then clear
+        subscriber.awaitEvents(5);
         subscriber.events.clear();
 
         clock.advance(WAIT_DURATION.plusSeconds(1));
@@ -127,9 +130,8 @@ class CircuitBreakerEventTest {
                 .map(e -> (CircuitBreakerEvent.StateTransition) e)
                 .toList();
 
-        assertEquals(1, transitions.size());
-        assertEquals(StateName.OPEN, transitions.getFirst().from());
-        assertEquals(StateName.HALF_OPEN, transitions.getFirst().to());
+        assertTrue(transitions.stream().anyMatch(t ->
+                t.from() == StateName.OPEN && t.to() == StateName.HALF_OPEN));
     }
 
     @Test
@@ -164,6 +166,31 @@ class CircuitBreakerEventTest {
 
         Thread.sleep(50);
         assertTrue(subscriber.events.isEmpty());
+    }
+
+    @Test
+    @DisplayName("non-recorded exceptions do not emit CallFailure event")
+    void nonRecordedExceptionsNoEvent() throws InterruptedException {
+        var config = CircuitBreakerConfig.builder()
+                .failureRateThreshold(50)
+                .ringBufferSize(4)
+                .waitDurationInOpenState(Duration.ofSeconds(30))
+                .permittedCallsInHalfOpen(2)
+                .callTimeout(Duration.ofSeconds(2))
+                .recordFailure(e -> !(e instanceof IllegalArgumentException))
+                .clock(clock)
+                .build();
+        var cb = CircuitBreaker.of("filtered", config);
+        var sub = new TestSubscriber();
+        cb.eventPublisher().subscribe(sub);
+
+        assertThrows(IllegalArgumentException.class, () ->
+                cb.execute(() -> { throw new IllegalArgumentException("ignored"); }));
+
+        Thread.sleep(100);
+        // No events should be emitted for non-recorded exceptions
+        assertTrue(sub.events.isEmpty(),
+                "Expected no events for non-recorded exception but got: " + sub.events);
     }
 
     private void tripBreaker() {

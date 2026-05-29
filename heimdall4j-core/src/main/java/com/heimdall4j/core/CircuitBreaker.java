@@ -26,12 +26,14 @@ public final class CircuitBreaker {
     private final CircuitBreakerConfig config;
     private final AtomicReference<State> stateRef;
     private final SubmissionPublisher<CircuitBreakerEvent> eventPublisher;
+    private final java.util.concurrent.ExecutorService timeoutExecutor;
 
     private CircuitBreaker(String name, CircuitBreakerConfig config) {
         this.name = Objects.requireNonNull(name, "name must not be null");
         this.config = Objects.requireNonNull(config, "config must not be null");
         this.stateRef = new AtomicReference<>(new State.Closed(new RingBuffer(config.ringBufferSize())));
         this.eventPublisher = new SubmissionPublisher<>();
+        this.timeoutExecutor = Executors.newVirtualThreadPerTaskExecutor();
     }
 
     /**
@@ -123,8 +125,8 @@ public final class CircuitBreaker {
     }
 
     /**
-     * Closes the event publisher and releases resources.
-     * After calling this, no more events will be emitted.
+     * Closes the event publisher, stopping event emission.
+     * The circuit breaker remains functional after close — it just stops publishing events.
      */
     public void close() {
         eventPublisher.close();
@@ -132,7 +134,6 @@ public final class CircuitBreaker {
 
     private <T> T executeInClosed(Supplier<T> supplier, State.Closed closed) {
         Instant start = Instant.now(config.clock());
-
         try {
             T result = executeWithTimeout(supplier);
             recordSuccess(closed);
@@ -145,8 +146,8 @@ public final class CircuitBreaker {
         } catch (Exception e) {
             if (config.recordFailure().test(e)) {
                 recordFailure(closed);
+                emit(new CircuitBreakerEvent.CallFailure(name, e, Duration.between(start, Instant.now(config.clock()))));
             }
-            emit(new CircuitBreakerEvent.CallFailure(name, e, Duration.between(start, Instant.now(config.clock()))));
             throw wrapIfChecked(e);
         }
     }
@@ -162,7 +163,6 @@ public final class CircuitBreaker {
         }
 
         Instant start = Instant.now(config.clock());
-
         try {
             T result = executeWithTimeout(supplier);
             recordHalfOpenSuccess(halfOpen);
@@ -175,59 +175,88 @@ public final class CircuitBreaker {
         } catch (Exception e) {
             if (config.recordFailure().test(e)) {
                 recordHalfOpenFailure(halfOpen);
+                emit(new CircuitBreakerEvent.CallFailure(name, e, Duration.between(start, Instant.now(config.clock()))));
             }
-            emit(new CircuitBreakerEvent.CallFailure(name, e, Duration.between(start, Instant.now(config.clock()))));
             throw wrapIfChecked(e);
         }
     }
 
     private void recordSuccess(State.Closed closed) {
-        var newWindow = closed.window().record(true);
-        var newState = new State.Closed(newWindow);
-        stateRef.compareAndSet(closed, newState);
+        var current = closed;
+        while (true) {
+            var newWindow = current.window().record(true);
+            var newState = new State.Closed(newWindow);
+            if (stateRef.compareAndSet(current, newState)) return;
+            State s = stateRef.get();
+            if (s instanceof State.Closed c) { current = c; }
+            else return;
+        }
     }
 
     private void recordFailure(State.Closed closed) {
-        var newWindow = closed.window().record(false);
+        var current = closed;
+        while (true) {
+            var newWindow = current.window().record(false);
 
-        if (newWindow.isFull() && newWindow.failureRate() >= config.failureRateThreshold()) {
-            var openState = new State.Open(Instant.now(config.clock()));
-            if (stateRef.compareAndSet(closed, openState)) {
-                emit(new CircuitBreakerEvent.StateTransition(name, StateName.CLOSED, StateName.OPEN, Instant.now(config.clock())));
+            if (newWindow.isFull() && newWindow.failureRate() >= config.failureRateThreshold()) {
+                var openState = new State.Open(Instant.now(config.clock()));
+                if (stateRef.compareAndSet(current, openState)) {
+                    emit(new CircuitBreakerEvent.StateTransition(name, StateName.CLOSED, StateName.OPEN, Instant.now(config.clock())));
+                    return;
+                }
+            } else {
+                var newState = new State.Closed(newWindow);
+                if (stateRef.compareAndSet(current, newState)) return;
             }
-        } else {
-            var newState = new State.Closed(newWindow);
-            stateRef.compareAndSet(closed, newState);
+
+            State s = stateRef.get();
+            if (s instanceof State.Closed c) { current = c; }
+            else return;
         }
     }
 
     private void recordHalfOpenSuccess(State.HalfOpen halfOpen) {
-        int newSuccessCount = halfOpen.probeSuccessCount() + 1;
+        var current = halfOpen;
+        while (true) {
+            int newSuccessCount = current.probeSuccessCount() + 1;
 
-        if (newSuccessCount >= config.permittedCallsInHalfOpen()) {
-            var closedState = new State.Closed(new RingBuffer(config.ringBufferSize()));
-            if (stateRef.compareAndSet(halfOpen, closedState)) {
-                emit(new CircuitBreakerEvent.StateTransition(name, StateName.HALF_OPEN, StateName.CLOSED, Instant.now(config.clock())));
+            if (newSuccessCount >= config.permittedCallsInHalfOpen()) {
+                var closedState = new State.Closed(new RingBuffer(config.ringBufferSize()));
+                if (stateRef.compareAndSet(current, closedState)) {
+                    emit(new CircuitBreakerEvent.StateTransition(name, StateName.HALF_OPEN, StateName.CLOSED, Instant.now(config.clock())));
+                    return;
+                }
+            } else {
+                var newState = new State.HalfOpen(newSuccessCount, current.probeFailureCount(), current.window().record(true));
+                if (stateRef.compareAndSet(current, newState)) return;
             }
-        } else {
-            var newState = new State.HalfOpen(newSuccessCount, halfOpen.probeFailureCount(), halfOpen.window().record(true));
-            stateRef.compareAndSet(halfOpen, newState);
+
+            State s = stateRef.get();
+            if (s instanceof State.HalfOpen h) { current = h; }
+            else return;
         }
     }
 
     private void recordHalfOpenFailure(State.HalfOpen halfOpen) {
-        var openState = new State.Open(Instant.now(config.clock()));
-
-        if (stateRef.compareAndSet(halfOpen, openState)) {
-            emit(new CircuitBreakerEvent.StateTransition(name, StateName.HALF_OPEN, StateName.OPEN, Instant.now(config.clock())));
+        var current = halfOpen;
+        while (true) {
+            var openState = new State.Open(Instant.now(config.clock()));
+            if (stateRef.compareAndSet(current, openState)) {
+                emit(new CircuitBreakerEvent.StateTransition(name, StateName.HALF_OPEN, StateName.OPEN, Instant.now(config.clock())));
+                return;
+            }
+            State s = stateRef.get();
+            if (s instanceof State.HalfOpen h) { current = h; }
+            else return;
         }
     }
 
     private <T> T executeWithTimeout(Supplier<T> supplier) {
-        try (var executor = Executors.newVirtualThreadPerTaskExecutor()) {
-            var future = executor.submit((Callable<T>) supplier::get);
+        var future = timeoutExecutor.submit((Callable<T>) supplier::get);
+        try {
             return future.get(config.callTimeout().toMillis(), TimeUnit.MILLISECONDS);
         } catch (TimeoutException e) {
+            future.cancel(true);
             throw new CallTimeoutException(name, config.callTimeout());
         } catch (ExecutionException e) {
             Throwable cause = e.getCause();
@@ -236,6 +265,7 @@ public final class CircuitBreaker {
             }
             throw new RuntimeException(cause);
         } catch (InterruptedException e) {
+            future.cancel(true);
             Thread.currentThread().interrupt();
             throw new RuntimeException("Circuit breaker call interrupted", e);
         }
