@@ -58,13 +58,32 @@ public final class CircuitBreaker {
     public <T> T execute(Supplier<T> supplier, Supplier<T> fallback) {
         Objects.requireNonNull(supplier, "supplier must not be null");
 
-        State currentState = stateRef.get();
+        // Re-read state in a loop to handle OPEN → HALF_OPEN transition
+        while (true) {
+            State currentState = stateRef.get();
 
-        return switch (currentState) {
-            case State.Closed closed -> executeInClosed(supplier, closed);
-            case State.Open open -> handleOpen(open, fallback);
-            case State.HalfOpen halfOpen -> executeInHalfOpen(supplier, halfOpen, fallback);
-        };
+            switch (currentState) {
+                case State.Closed closed -> {
+                    return executeInClosed(supplier, closed);
+                }
+                case State.Open open -> {
+                    Instant now = Instant.now(config.clock());
+                    if (now.isAfter(open.openedAt().plus(config.waitDurationInOpenState()))) {
+                        // Transition to half-open and retry loop
+                        var halfOpen = new State.HalfOpen(0, 0, new RingBuffer(config.permittedCallsInHalfOpen()));
+                        stateRef.compareAndSet(open, halfOpen);
+                        continue;
+                    }
+                    if (fallback != null) {
+                        return fallback.get();
+                    }
+                    throw new CircuitOpenException(name);
+                }
+                case State.HalfOpen halfOpen -> {
+                    return executeInHalfOpen(supplier, halfOpen, fallback);
+                }
+            }
+        }
     }
 
     /**
@@ -102,23 +121,6 @@ public final class CircuitBreaker {
             }
             throw wrapIfChecked(e);
         }
-    }
-
-    private <T> T handleOpen(State.Open open, Supplier<T> fallback) {
-        // Check if wait duration has elapsed — transition to half-open
-        Instant now = Instant.now(config.clock());
-
-        if (now.isAfter(open.openedAt().plus(config.waitDurationInOpenState()))) {
-            var halfOpen = new State.HalfOpen(0, 0, new RingBuffer(config.permittedCallsInHalfOpen()));
-            stateRef.compareAndSet(open, halfOpen);
-            // Retry — state may have changed
-            return execute(fallback != null ? fallback : () -> { throw new CircuitOpenException(name); }, null);
-        }
-
-        if (fallback != null) {
-            return fallback.get();
-        }
-        throw new CircuitOpenException(name);
     }
 
     private <T> T executeInHalfOpen(Supplier<T> supplier, State.HalfOpen halfOpen, Supplier<T> fallback) {

@@ -164,7 +164,7 @@ class CircuitBreakerTest {
         for (int i = 0; i < 4; i++) {
             assertThrows(CallTimeoutException.class, () ->
                     cb.execute(() -> {
-                        Thread.sleep(200);
+                        try { Thread.sleep(200); } catch (InterruptedException ie) { Thread.currentThread().interrupt(); }
                         return "too slow";
                     }));
         }

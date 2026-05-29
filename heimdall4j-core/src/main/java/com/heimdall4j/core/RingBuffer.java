@@ -44,25 +44,25 @@ final class RingBuffer {
     RingBuffer record(boolean success) {
         var copy = new RingBuffer(this.outcomes, this.capacity, this.head, this.count, this.failureCount);
 
-        if (copy.count == copy.capacity) {
-            // Overwriting oldest entry
-            boolean oldest = copy.outcomes[copy.head];
+        int writeIndex;
+        if (copy.count < copy.capacity) {
+            // Buffer not yet full — append at next slot
+            writeIndex = (copy.head + copy.count) % copy.capacity;
+            copy.count++;
+        } else {
+            // Buffer full — overwrite oldest (at head), advance head
+            writeIndex = copy.head;
+            boolean oldest = copy.outcomes[writeIndex];
             if (!oldest) {
                 copy.failureCount--;
             }
-        } else {
-            copy.count++;
+            copy.head = (copy.head + 1) % copy.capacity;
         }
 
-        int index = (copy.head + copy.count - 1) % copy.capacity;
-        copy.outcomes[index] = success;
+        copy.outcomes[writeIndex] = success;
 
         if (!success) {
             copy.failureCount++;
-        }
-
-        if (copy.count == copy.capacity) {
-            copy.head = (copy.head + 1) % copy.capacity;
         }
 
         return copy;
