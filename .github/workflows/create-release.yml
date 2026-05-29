@@ -1,0 +1,125 @@
+name: Create Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      bump:
+        description: 'Version bump type'
+        required: true
+        type: choice
+        options:
+          - patch
+          - minor
+          - major
+      prerelease:
+        description: 'Pre-release (leave empty for stable)'
+        required: false
+        type: string
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      packages: write
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up JDK 25
+        uses: actions/setup-java@v4
+        with:
+          java-version: '25'
+          distribution: 'temurin'
+
+      - name: Cache Gradle packages
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle', '**/gradle-wrapper.properties') }}
+          restore-keys: |
+            ${{ runner.os }}-gradle-
+
+      - name: Grant execute permission for gradlew
+        run: chmod +x gradlew
+
+      - name: Calculate next version
+        id: version
+        run: |
+          # Get current version from build.gradle
+          CURRENT=$(grep "version = " build.gradle | head -1 | sed "s/.*version = '\\(.*\\)'/\\1/")
+          echo "Current version: $CURRENT"
+
+          # Strip -SNAPSHOT suffix if present
+          BASE=${CURRENT%-SNAPSHOT}
+
+          # Parse semver
+          IFS='.' read -r MAJOR MINOR PATCH <<< "$BASE"
+
+          # Bump
+          case "${{ inputs.bump }}" in
+            major) MAJOR=$((MAJOR + 1)); MINOR=0; PATCH=0 ;;
+            minor) MINOR=$((MINOR + 1)); PATCH=0 ;;
+            patch) PATCH=$((PATCH + 1)) ;;
+          esac
+
+          # Build version string
+          VERSION="${MAJOR}.${MINOR}.${PATCH}"
+          if [ -n "${{ inputs.prerelease }}" ]; then
+            VERSION="${VERSION}-${{ inputs.prerelease }}"
+          fi
+
+          NEXT_SNAPSHOT="${MAJOR}.${MINOR}.$((PATCH + 1))-SNAPSHOT"
+
+          echo "version=${VERSION}" >> $GITHUB_OUTPUT
+          echo "next_snapshot=${NEXT_SNAPSHOT}" >> $GITHUB_OUTPUT
+          echo "Release version: ${VERSION}"
+          echo "Next development: ${NEXT_SNAPSHOT}"
+
+      - name: Set release version
+        run: |
+          sed -i "s/version = '.*'/version = '${{ steps.version.outputs.version }}'/" build.gradle
+
+      - name: Build and test
+        run: ./gradlew clean build
+
+      - name: Publish to GitHub Packages
+        run: ./gradlew publish
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Commit release version
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add build.gradle
+          git commit -m "release: v${{ steps.version.outputs.version }}"
+          git tag "v${{ steps.version.outputs.version }}"
+
+      - name: Set next development version
+        run: |
+          sed -i "s/version = '.*'/version = '${{ steps.version.outputs.next_snapshot }}'/" build.gradle
+          git add build.gradle
+          git commit -m "chore: bump to ${{ steps.version.outputs.next_snapshot }}"
+
+      - name: Push changes and tag
+        run: |
+          git push origin main
+          git push origin "v${{ steps.version.outputs.version }}"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ steps.version.outputs.version }}
+          name: v${{ steps.version.outputs.version }}
+          generate_release_notes: true
+          prerelease: ${{ inputs.prerelease != '' }}
+          files: |
+            heimdall4j-core/build/libs/*.jar
+            heimdall4j-spring-boot/build/libs/*.jar
+            heimdall4j-sidecar/build/libs/*.jar
