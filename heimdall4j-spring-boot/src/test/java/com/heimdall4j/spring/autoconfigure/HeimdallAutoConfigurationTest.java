@@ -2,6 +2,7 @@ package com.heimdall4j.spring.autoconfigure;
 
 import com.heimdall4j.core.StateName;
 import com.heimdall4j.spring.HeimdallRegistry;
+import com.heimdall4j.spring.annotation.HeimdallAspect;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -76,5 +77,13 @@ class HeimdallAutoConfigurationTest {
                     // User-provided bean is empty — auto-config didn't populate it
                     assertThat(context.getBean(HeimdallRegistry.class).size()).isZero();
                 });
+    }
+
+    @Test
+    @DisplayName("registers HeimdallAspect bean when AOP is available")
+    void registersAspectBean() {
+        contextRunner.run(context -> {
+            assertThat(context).hasSingleBean(HeimdallAspect.class);
+        });
     }
 }

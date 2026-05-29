@@ -23,8 +23,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 @SpringBootTest(classes = {
         HeimdallAspectTest.TestConfig.class,
-        AopAutoConfiguration.class,
-        HeimdallAspect.class
+        AopAutoConfiguration.class
 })
 class HeimdallAspectTest {
 
@@ -44,37 +43,32 @@ class HeimdallAspectTest {
     @Test
     @DisplayName("circuit opens after failures and invokes fallback")
     void fallbackOnOpenCircuit() {
-        // Trip the breaker: ring buffer size is 2, threshold 50% → 1 failure in 2 calls trips
+        // Trip the breaker: ring buffer size is 2, threshold 50%
+        // Need buffer full with failure as last call (threshold check is in recordFailure)
+        testService.protectedCallWithFallback(false); // success, buffer count=1
         assertThatThrownBy(() -> testService.protectedCallWithFallback(true))
-                .isInstanceOf(RuntimeException.class);
+                .isInstanceOf(RuntimeException.class); // failure, buffer full, 50% ≥ 50% → OPEN
 
-        // fill the buffer
-        testService.protectedCallWithFallback(false);
-
-        // At this point failure rate = 50%, trips to OPEN
-        // Next call should use fallback
         var breaker = registry.get("withFallback").orElseThrow();
+        assertThat(breaker.state()).isEqualTo(StateName.OPEN);
 
-        if (breaker.state() == StateName.OPEN) {
-            var result = testService.protectedCallWithFallback(false);
-            assertThat(result).isEqualTo("fallback");
-        }
+        var result = testService.protectedCallWithFallback(false);
+        assertThat(result).isEqualTo("fallback");
     }
 
     @Test
     @DisplayName("throws CircuitOpenException when no fallback and circuit open")
     void noFallbackThrows() {
-        var breaker = registry.get("noFallback").orElseThrow();
-
         // Trip the breaker: buffer size 2, threshold 50%
+        testService.noFallbackCall(false); // success, buffer count=1
         assertThatThrownBy(() -> testService.noFallbackCall(true))
-                .isInstanceOf(RuntimeException.class);
-        testService.noFallbackCall(false);
+                .isInstanceOf(RuntimeException.class); // failure, buffer full → OPEN
 
-        if (breaker.state() == StateName.OPEN) {
-            assertThatThrownBy(() -> testService.noFallbackCall(false))
-                    .isInstanceOf(CircuitOpenException.class);
-        }
+        var breaker = registry.get("noFallback").orElseThrow();
+        assertThat(breaker.state()).isEqualTo(StateName.OPEN);
+
+        assertThatThrownBy(() -> testService.noFallbackCall(false))
+                .isInstanceOf(CircuitOpenException.class);
     }
 
     @Test
@@ -104,6 +98,11 @@ class HeimdallAspectTest {
             registry.register(CircuitBreaker.of("withFallback", smallConfig));
             registry.register(CircuitBreaker.of("noFallback", smallConfig));
             return registry;
+        }
+
+        @Bean
+        HeimdallAspect heimdallAspect(HeimdallRegistry registry) {
+            return new HeimdallAspect(registry);
         }
 
         @Bean

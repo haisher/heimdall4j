@@ -6,7 +6,6 @@ import org.aspectj.lang.ProceedingJoinPoint;
 import org.aspectj.lang.annotation.Around;
 import org.aspectj.lang.annotation.Aspect;
 import org.aspectj.lang.reflect.MethodSignature;
-import org.springframework.stereotype.Component;
 
 import java.lang.reflect.Method;
 import java.util.concurrent.ConcurrentHashMap;
@@ -22,7 +21,6 @@ import java.util.function.Supplier;
  * returns a {@code Supplier<T>}.</p>
  */
 @Aspect
-@Component
 public class HeimdallAspect {
 
     private final HeimdallRegistry registry;

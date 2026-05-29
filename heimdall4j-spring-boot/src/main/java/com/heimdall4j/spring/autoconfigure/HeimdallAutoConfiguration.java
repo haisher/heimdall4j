@@ -3,8 +3,10 @@ package com.heimdall4j.spring.autoconfigure;
 import com.heimdall4j.core.CircuitBreaker;
 import com.heimdall4j.core.CircuitBreakerConfig;
 import com.heimdall4j.spring.HeimdallRegistry;
+import com.heimdall4j.spring.annotation.HeimdallAspect;
 
 import org.springframework.boot.autoconfigure.AutoConfiguration;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
@@ -35,5 +37,12 @@ public class HeimdallAutoConfiguration {
         });
 
         return registry;
+    }
+
+    @Bean
+    @ConditionalOnMissingBean
+    @ConditionalOnClass(name = "org.aspectj.lang.annotation.Aspect")
+    public HeimdallAspect heimdallAspect(HeimdallRegistry registry) {
+        return new HeimdallAspect(registry);
     }
 }
