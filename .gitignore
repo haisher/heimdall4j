@@ -20,3 +20,7 @@ Thumbs.db
 # Environment
 .env
 *.local
+
+# JReleaser staging
+**/staging-deploy/
+**/out/jreleaser/

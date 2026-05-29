@@ -1,4 +1,4 @@
-module com.heimdall4j.core {
-    exports com.heimdall4j.core;
-    exports com.heimdall4j.core.exception;
+module io.github.haisher.heimdall4j.core {
+    exports io.github.haisher.heimdall4j.core;
+    exports io.github.haisher.heimdall4j.core.exception;
 }

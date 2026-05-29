@@ -1,11 +1,13 @@
 plugins {
     id 'java-library'
     id 'maven-publish'
+    id 'signing'
     id 'jacoco'
+    id 'org.jreleaser' version '1.24.0'
 }
 
 allprojects {
-    group = 'com.heimdall4j'
+    group = 'io.github.haisher'
     version = '0.1.0-SNAPSHOT'
 
     repositories {
@@ -16,12 +18,15 @@ allprojects {
 subprojects {
     apply plugin: 'java-library'
     apply plugin: 'maven-publish'
+    apply plugin: 'signing'
     apply plugin: 'jacoco'
 
     java {
         toolchain {
             languageVersion = JavaLanguageVersion.of(25)
         }
+        withSourcesJar()
+        withJavadocJar()
     }
 
     tasks.withType(JavaCompile).configureEach {
@@ -61,6 +66,10 @@ subprojects {
                     password = project.findProperty("gpr.key") ?: System.getenv("GITHUB_TOKEN")
                 }
             }
+            maven {
+                name = "StagingDeploy"
+                url = layout.buildDirectory.dir("staging-deploy")
+            }
         }
 
         publications {
@@ -79,10 +88,52 @@ subprojects {
                         }
                     }
 
+                    developers {
+                        developer {
+                            id = 'haisher'
+                            name = 'haisher'
+                            url = 'https://github.com/haisher'
+                        }
+                    }
+
                     scm {
                         url = 'https://github.com/haisher/heimdall4j'
-                        connection = 'scm:git:git@github.com:haisher/heimdall4j.git'
+                        connection = 'scm:git:git://github.com/haisher/heimdall4j.git'
+                        developerConnection = 'scm:git:ssh://github.com:haisher/heimdall4j.git'
                     }
+                }
+            }
+        }
+    }
+
+    signing {
+        def signingKey = project.findProperty("signing.key") ?: System.getenv("GPG_PRIVATE_KEY")
+        def signingPassword = project.findProperty("signing.password") ?: System.getenv("GPG_PASSPHRASE")
+        useInMemoryPgpKeys(signingKey, signingPassword)
+        sign publishing.publications.maven
+    }
+
+    tasks.withType(Sign).configureEach {
+        onlyIf { !version.toString().endsWith('-SNAPSHOT') }
+    }
+}
+
+jreleaser {
+    signing {
+        active = 'ALWAYS'
+        armored = true
+    }
+    deploy {
+        maven {
+            mavenCentral {
+                sonatype {
+                    active = 'RELEASE'
+                    url = 'https://central.sonatype.com/api/v1/publisher'
+                    stagingRepositories = [
+                        'heimdall4j-core/build/staging-deploy',
+                        'heimdall4j-spring-boot/build/staging-deploy',
+                        'heimdall4j-sidecar/build/staging-deploy'
+                    ]
                 }
             }
         }

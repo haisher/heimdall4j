@@ -1,1 +1,1 @@
-com.heimdall4j.sidecar.autoconfigure.HeimdallSidecarAutoConfiguration
+io.github.haisher.heimdall4j.sidecar.autoconfigure.HeimdallSidecarAutoConfiguration
