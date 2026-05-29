@@ -79,6 +79,30 @@ class HeimdallAspectTest {
                 .hasMessageContaining("nonexistent");
     }
 
+    @Test
+    @DisplayName("wraps checked exception thrown by annotated method")
+    void checkedExceptionWrapping() {
+        assertThatThrownBy(() -> testService.checkedExceptionCall())
+                .isInstanceOf(RuntimeException.class)
+                .hasCauseInstanceOf(Exception.class)
+                .hasRootCauseMessage("checked");
+    }
+
+    @Test
+    @DisplayName("resolves private fallback method via getDeclaredMethod")
+    void privateFallbackResolution() {
+        // Trip the breaker
+        testService.privateFallbackCall(false);
+        assertThatThrownBy(() -> testService.privateFallbackCall(true))
+                .isInstanceOf(RuntimeException.class);
+
+        var breaker = registry.get("privateFallback").orElseThrow();
+        assertThat(breaker.state()).isEqualTo(StateName.OPEN);
+
+        var result = testService.privateFallbackCall(false);
+        assertThat(result).isEqualTo("private-fallback");
+    }
+
     @Configuration
     @EnableAspectJAutoProxy
     static class TestConfig {
@@ -97,6 +121,8 @@ class HeimdallAspectTest {
             registry.register(CircuitBreaker.of("test", smallConfig));
             registry.register(CircuitBreaker.of("withFallback", smallConfig));
             registry.register(CircuitBreaker.of("noFallback", smallConfig));
+            registry.register(CircuitBreaker.of("checked", smallConfig));
+            registry.register(CircuitBreaker.of("privateFallback", smallConfig));
             return registry;
         }
 
@@ -137,6 +163,22 @@ class HeimdallAspectTest {
         @Heimdall("nonexistent")
         public String unregisteredCall() {
             return "ok";
+        }
+
+        @Heimdall("checked")
+        public String checkedExceptionCall() throws Exception {
+            throw new Exception("checked");
+        }
+
+        @Heimdall("privateFallback")
+        public String privateFallbackCall(boolean shouldFail) {
+            if (shouldFail) throw new RuntimeException("boom");
+            return "ok";
+        }
+
+        @SuppressWarnings("unused")
+        private Supplier<String> privateFallbackCallFallback() {
+            return () -> "private-fallback";
         }
     }
 }

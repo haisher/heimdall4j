@@ -70,4 +70,18 @@ class HeimdallEventLoggerTest {
         Thread.sleep(50); // allow async event delivery
         // If we reach here, logging didn't throw
     }
+
+    @Test
+    @DisplayName("handles onComplete without throwing when breaker is closed")
+    void handlesOnComplete() throws Exception {
+        var registry = new HeimdallRegistry();
+        var breaker = CircuitBreaker.of("complete-test", CircuitBreakerConfig.ofDefaults());
+        registry.register(breaker);
+        new HeimdallEventLogger(registry);
+
+        // close() shuts down the SubmissionPublisher, triggering onComplete
+        breaker.close();
+        Thread.sleep(50); // allow async delivery of onComplete
+        // No exception means onComplete handled gracefully
+    }
 }

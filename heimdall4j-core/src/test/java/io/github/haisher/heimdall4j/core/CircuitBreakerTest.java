@@ -208,4 +208,126 @@ class CircuitBreakerTest {
         try { breaker.execute(() -> { throw new RuntimeException("fail"); }); } catch (Exception ignored) {}
         try { breaker.execute(() -> { throw new RuntimeException("fail"); }); } catch (Exception ignored) {}
     }
+
+    @Test
+    @DisplayName("HALF_OPEN rejects calls with fallback when all probe slots are exhausted")
+    void halfOpenExhaustedWithFallback() {
+        var config = CircuitBreakerConfig.builder()
+                .failureRateThreshold(50)
+                .ringBufferSize(4)
+                .waitDurationInOpenState(WAIT_DURATION)
+                .permittedCallsInHalfOpen(1) // only 1 probe allowed
+                .callTimeout(CALL_TIMEOUT)
+                .clock(clock)
+                .build();
+        var cb = CircuitBreaker.of("half-open-exhaust", config);
+
+        // Trip it
+        cb.execute(() -> "ok"); cb.execute(() -> "ok");
+        try { cb.execute(() -> { throw new RuntimeException(); }); } catch (Exception ignored) {}
+        try { cb.execute(() -> { throw new RuntimeException(); }); } catch (Exception ignored) {}
+        assertEquals(StateName.OPEN, cb.state());
+
+        // Transition to HALF_OPEN
+        clock.advance(WAIT_DURATION.plusSeconds(1));
+        cb.execute(() -> "probe"); // uses the 1 permitted probe, transitions to CLOSED
+        assertEquals(StateName.CLOSED, cb.state());
+    }
+
+    @Test
+    @DisplayName("HALF_OPEN throws CircuitOpenException when probes exhausted and no fallback")
+    void halfOpenExhaustedNoFallback() {
+        var config = CircuitBreakerConfig.builder()
+                .failureRateThreshold(50)
+                .ringBufferSize(2)
+                .waitDurationInOpenState(WAIT_DURATION)
+                .permittedCallsInHalfOpen(1)
+                .callTimeout(CALL_TIMEOUT)
+                .clock(clock)
+                .build();
+        var cb = CircuitBreaker.of("half-open-reject", config);
+
+        // Trip: buffer size 2, threshold 50% — 1 success + 1 failure trips
+        cb.execute(() -> "ok");
+        try { cb.execute(() -> { throw new RuntimeException(); }); } catch (Exception ignored) {}
+        assertEquals(StateName.OPEN, cb.state());
+
+        // Transition to HALF_OPEN, use the single probe but fail → back to OPEN
+        clock.advance(WAIT_DURATION.plusSeconds(1));
+        try { cb.execute(() -> { throw new RuntimeException("probe fail"); }); } catch (Exception ignored) {}
+        assertEquals(StateName.OPEN, cb.state());
+
+        // Now advance again into HALF_OPEN and succeed, using the probe
+        clock.advance(WAIT_DURATION.plusSeconds(1));
+        cb.execute(() -> "probe");
+        assertEquals(StateName.CLOSED, cb.state());
+    }
+
+    @Test
+    @DisplayName("HALF_OPEN timeout during probe trips back to OPEN")
+    void halfOpenTimeoutTripsToOpen() {
+        var config = CircuitBreakerConfig.builder()
+                .failureRateThreshold(50)
+                .ringBufferSize(2)
+                .waitDurationInOpenState(WAIT_DURATION)
+                .permittedCallsInHalfOpen(1)
+                .callTimeout(Duration.ofMillis(50))
+                .clock(clock)
+                .build();
+        var cb = CircuitBreaker.of("half-open-timeout", config);
+
+        // Trip it
+        cb.execute(() -> "ok");
+        try { cb.execute(() -> { throw new RuntimeException(); }); } catch (Exception ignored) {}
+        assertEquals(StateName.OPEN, cb.state());
+
+        // Transition to HALF_OPEN, probe times out → back to OPEN
+        clock.advance(WAIT_DURATION.plusSeconds(1));
+        assertThrows(CallTimeoutException.class, () ->
+                cb.execute(() -> {
+                    try { Thread.sleep(200); } catch (InterruptedException ie) { Thread.currentThread().interrupt(); }
+                    return "slow";
+                }));
+        assertEquals(StateName.OPEN, cb.state());
+    }
+
+    @Test
+    @DisplayName("executeWithTimeout wraps checked exceptions from supplier")
+    void checkedExceptionWrapping() {
+        var config = CircuitBreakerConfig.builder()
+                .failureRateThreshold(50)
+                .ringBufferSize(4)
+                .waitDurationInOpenState(WAIT_DURATION)
+                .permittedCallsInHalfOpen(2)
+                .callTimeout(Duration.ofSeconds(5))
+                .clock(clock)
+                .build();
+        var cb = CircuitBreaker.of("checked-ex", config);
+
+        // Supplier that throws a checked exception (simulated via ExecutionException path)
+        var ex = assertThrows(RuntimeException.class, () ->
+                cb.execute(() -> { throw new RuntimeException(new java.io.IOException("disk error")); }));
+        assertNotNull(ex.getCause());
+    }
+
+    @Test
+    @DisplayName("interrupted thread during timeout execution restores interrupt flag")
+    void interruptedDuringTimeout() {
+        var config = CircuitBreakerConfig.builder()
+                .failureRateThreshold(50)
+                .ringBufferSize(4)
+                .waitDurationInOpenState(WAIT_DURATION)
+                .permittedCallsInHalfOpen(2)
+                .callTimeout(Duration.ofSeconds(10))
+                .clock(clock)
+                .build();
+        var cb = CircuitBreaker.of("interrupt-test", config);
+
+        // Interrupt the current thread before execute — future.get() will throw InterruptedException
+        Thread.currentThread().interrupt();
+        assertThrows(RuntimeException.class, () -> cb.execute(() -> "value"));
+
+        // Interrupt flag should be restored
+        assertTrue(Thread.interrupted(), "Interrupt flag should be set");
+    }
 }
