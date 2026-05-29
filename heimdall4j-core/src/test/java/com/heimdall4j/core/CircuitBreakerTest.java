@@ -6,10 +6,8 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
-import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
-import java.time.ZoneId;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -209,35 +207,5 @@ class CircuitBreakerTest {
         breaker.execute(() -> "ok");
         try { breaker.execute(() -> { throw new RuntimeException("fail"); }); } catch (Exception ignored) {}
         try { breaker.execute(() -> { throw new RuntimeException("fail"); }); } catch (Exception ignored) {}
-    }
-
-    /**
-     * Test clock that can be manually advanced.
-     */
-    static final class MutableClock extends Clock {
-        private Instant instant;
-
-        MutableClock(Instant initial) {
-            this.instant = initial;
-        }
-
-        void advance(Duration duration) {
-            this.instant = this.instant.plus(duration);
-        }
-
-        @Override
-        public ZoneId getZone() {
-            return ZoneId.of("UTC");
-        }
-
-        @Override
-        public Clock withZone(ZoneId zone) {
-            return this;
-        }
-
-        @Override
-        public Instant instant() {
-            return instant;
-        }
     }
 }

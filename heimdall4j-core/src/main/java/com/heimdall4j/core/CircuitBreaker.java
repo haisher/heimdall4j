@@ -9,6 +9,8 @@ import java.util.Objects;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executors;
+import java.util.concurrent.Flow;
+import java.util.concurrent.SubmissionPublisher;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicReference;
@@ -23,11 +25,13 @@ public final class CircuitBreaker {
     private final String name;
     private final CircuitBreakerConfig config;
     private final AtomicReference<State> stateRef;
+    private final SubmissionPublisher<CircuitBreakerEvent> eventPublisher;
 
     private CircuitBreaker(String name, CircuitBreakerConfig config) {
         this.name = Objects.requireNonNull(name, "name must not be null");
         this.config = Objects.requireNonNull(config, "config must not be null");
         this.stateRef = new AtomicReference<>(new State.Closed(new RingBuffer(config.ringBufferSize())));
+        this.eventPublisher = new SubmissionPublisher<>();
     }
 
     /**
@@ -69,9 +73,10 @@ public final class CircuitBreaker {
                 case State.Open open -> {
                     Instant now = Instant.now(config.clock());
                     if (now.isAfter(open.openedAt().plus(config.waitDurationInOpenState()))) {
-                        // Transition to half-open and retry loop
                         var halfOpen = new State.HalfOpen(0, 0, new RingBuffer(config.permittedCallsInHalfOpen()));
-                        stateRef.compareAndSet(open, halfOpen);
+                        if (stateRef.compareAndSet(open, halfOpen)) {
+                            emit(new CircuitBreakerEvent.StateTransition(name, StateName.OPEN, StateName.HALF_OPEN, now));
+                        }
                         continue;
                     }
                     if (fallback != null) {
@@ -107,45 +112,67 @@ public final class CircuitBreaker {
         return config;
     }
 
+    /**
+     * Returns a Flow.Publisher that emits circuit breaker events.
+     * Subscribers receive events for state transitions, call outcomes, and timeouts.
+     */
+    public Flow.Publisher<CircuitBreakerEvent> eventPublisher() {
+        return eventPublisher;
+    }
+
+    /**
+     * Closes the event publisher and releases resources.
+     * After calling this, no more events will be emitted.
+     */
+    public void close() {
+        eventPublisher.close();
+    }
+
     private <T> T executeInClosed(Supplier<T> supplier, State.Closed closed) {
+        Instant start = Instant.now(config.clock());
         try {
             T result = executeWithTimeout(supplier);
             recordSuccess(closed);
+            emit(new CircuitBreakerEvent.CallSuccess(name, Duration.between(start, Instant.now(config.clock()))));
             return result;
         } catch (CallTimeoutException e) {
             recordFailure(closed);
+            emit(new CircuitBreakerEvent.CallTimeout(name, config.callTimeout()));
             throw e;
         } catch (Exception e) {
             if (config.recordFailure().test(e)) {
                 recordFailure(closed);
             }
+            emit(new CircuitBreakerEvent.CallFailure(name, e, Duration.between(start, Instant.now(config.clock()))));
             throw wrapIfChecked(e);
         }
     }
 
     private <T> T executeInHalfOpen(Supplier<T> supplier, State.HalfOpen halfOpen, Supplier<T> fallback) {
-        // Check if we've exhausted probe slots
         int totalProbes = halfOpen.probeSuccessCount() + halfOpen.probeFailureCount();
 
         if (totalProbes >= config.permittedCallsInHalfOpen()) {
-            // Already at probe limit — treat as open
             if (fallback != null) {
                 return fallback.get();
             }
             throw new CircuitOpenException(name);
         }
 
+        Instant start = Instant.now(config.clock());
         try {
             T result = executeWithTimeout(supplier);
             recordHalfOpenSuccess(halfOpen);
+            emit(new CircuitBreakerEvent.CallSuccess(name, Duration.between(start, Instant.now(config.clock()))));
             return result;
         } catch (CallTimeoutException e) {
             recordHalfOpenFailure(halfOpen);
+            emit(new CircuitBreakerEvent.CallTimeout(name, config.callTimeout()));
             throw e;
         } catch (Exception e) {
             if (config.recordFailure().test(e)) {
                 recordHalfOpenFailure(halfOpen);
             }
+            emit(new CircuitBreakerEvent.CallFailure(name, e, Duration.between(start, Instant.now(config.clock()))));
             throw wrapIfChecked(e);
         }
     }
@@ -160,9 +187,10 @@ public final class CircuitBreaker {
         var newWindow = closed.window().record(false);
 
         if (newWindow.isFull() && newWindow.failureRate() >= config.failureRateThreshold()) {
-            // Trip the breaker
             var openState = new State.Open(Instant.now(config.clock()));
-            stateRef.compareAndSet(closed, openState);
+            if (stateRef.compareAndSet(closed, openState)) {
+                emit(new CircuitBreakerEvent.StateTransition(name, StateName.CLOSED, StateName.OPEN, Instant.now(config.clock())));
+            }
         } else {
             var newState = new State.Closed(newWindow);
             stateRef.compareAndSet(closed, newState);
@@ -173,9 +201,10 @@ public final class CircuitBreaker {
         int newSuccessCount = halfOpen.probeSuccessCount() + 1;
 
         if (newSuccessCount >= config.permittedCallsInHalfOpen()) {
-            // Enough successful probes — close the breaker
             var closedState = new State.Closed(new RingBuffer(config.ringBufferSize()));
-            stateRef.compareAndSet(halfOpen, closedState);
+            if (stateRef.compareAndSet(halfOpen, closedState)) {
+                emit(new CircuitBreakerEvent.StateTransition(name, StateName.HALF_OPEN, StateName.CLOSED, Instant.now(config.clock())));
+            }
         } else {
             var newState = new State.HalfOpen(newSuccessCount, halfOpen.probeFailureCount(), halfOpen.window().record(true));
             stateRef.compareAndSet(halfOpen, newState);
@@ -183,9 +212,10 @@ public final class CircuitBreaker {
     }
 
     private void recordHalfOpenFailure(State.HalfOpen halfOpen) {
-        // Any failure in half-open trips back to open
         var openState = new State.Open(Instant.now(config.clock()));
-        stateRef.compareAndSet(halfOpen, openState);
+        if (stateRef.compareAndSet(halfOpen, openState)) {
+            emit(new CircuitBreakerEvent.StateTransition(name, StateName.HALF_OPEN, StateName.OPEN, Instant.now(config.clock())));
+        }
     }
 
     private <T> T executeWithTimeout(Supplier<T> supplier) {
@@ -203,6 +233,12 @@ public final class CircuitBreaker {
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             throw new RuntimeException("Circuit breaker call interrupted", e);
+        }
+    }
+
+    private void emit(CircuitBreakerEvent event) {
+        if (!eventPublisher.isClosed() && eventPublisher.hasSubscribers()) {
+            eventPublisher.submit(event);
         }
     }
 
