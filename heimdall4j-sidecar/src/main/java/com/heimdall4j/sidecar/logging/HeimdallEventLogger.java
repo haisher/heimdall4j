@@ -53,12 +53,11 @@ public class HeimdallEventLogger {
                                 e.circuitBreakerName(), e.elapsed().toMillis());
                 case CircuitBreakerEvent.CallFailure e ->
                         log.warn("Circuit breaker [{}] call failed in {}ms: {}",
-                                e.circuitBreakerName(), e.elapsed().toMillis(), e.cause().getMessage());
+                                e.circuitBreakerName(), e.elapsed().toMillis(), e.cause().toString());
                 case CircuitBreakerEvent.CallTimeout e ->
                         log.warn("Circuit breaker [{}] call timed out (configured: {}ms)",
                                 e.circuitBreakerName(), e.configuredTimeout().toMillis());
             }
-            subscription.request(1);
         }
 
         @Override

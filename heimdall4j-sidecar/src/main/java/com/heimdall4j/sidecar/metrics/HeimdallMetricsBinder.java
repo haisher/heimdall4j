@@ -102,7 +102,6 @@ public class HeimdallMetricsBinder {
                             .increment();
                 }
             }
-            subscription.request(1);
         }
 
         @Override
