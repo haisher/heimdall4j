@@ -1,5 +1,9 @@
 # Heimdall4j
 
+[![CI](https://github.com/haisher/heimdall4j/actions/workflows/ci.yml/badge.svg)](https://github.com/haisher/heimdall4j/actions/workflows/ci.yml)
+[![Maven Central](https://img.shields.io/maven-central/v/io.github.haisher/heimdall4j-core)](https://central.sonatype.com/artifact/io.github.haisher/heimdall4j-core)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
 Modern Java 25 circuit breaker library — slim, zero-dependency core with Spring Boot integration.
 
 ## Modules
@@ -10,9 +14,38 @@ Modern Java 25 circuit breaker library — slim, zero-dependency core with Sprin
 | `heimdall4j-spring-boot` | Spring Boot auto-configuration, `@Heimdall` annotation |
 | `heimdall4j-sidecar` | Actuator endpoint, Micrometer metrics, structured logging |
 
+## Installation
+
+### Gradle
+
+```groovy
+dependencies {
+    implementation 'io.github.haisher:heimdall4j-core:0.1.1'
+
+    // Optional: Spring Boot integration
+    implementation 'io.github.haisher:heimdall4j-spring-boot:0.1.1'
+
+    // Optional: Metrics, health checks, and logging
+    implementation 'io.github.haisher:heimdall4j-sidecar:0.1.1'
+}
+```
+
+### Maven
+
+```xml
+<dependency>
+    <groupId>io.github.haisher</groupId>
+    <artifactId>heimdall4j-core</artifactId>
+    <version>0.1.1</version>
+</dependency>
+```
+
 ## Quick Start (Core)
 
 ```java
+import io.github.haisher.heimdall4j.core.CircuitBreaker;
+import io.github.haisher.heimdall4j.core.CircuitBreakerConfig;
+
 var config = CircuitBreakerConfig.builder()
     .failureRateThreshold(50)
     .ringBufferSize(100)
@@ -23,13 +56,27 @@ var config = CircuitBreakerConfig.builder()
 
 var cb = CircuitBreaker.of("payments", config);
 
+// With fallback
 var result = cb.execute(
     () -> callExternalService(),
     () -> fallbackValue()
 );
+
+// Without fallback (throws CircuitOpenException when open)
+var result = cb.execute(() -> callExternalService());
+```
+
+### Event Subscription
+
+```java
+cb.eventPublisher().subscribe(new Flow.Subscriber<>() {
+    // React to state transitions, call successes, failures, and timeouts
+});
 ```
 
 ## Quick Start (Spring Boot)
+
+### Configuration via properties
 
 ```yaml
 heimdall4j:
@@ -39,7 +86,12 @@ heimdall4j:
       ring-buffer-size: 100
       wait-duration: 30s
       call-timeout: 2s
+    inventory:
+      failure-rate-threshold: 70
+      ring-buffer-size: 50
 ```
+
+### Annotation-based usage
 
 ```java
 @Heimdall("payments")
@@ -47,15 +99,61 @@ public PaymentResult processPayment(Order order) {
     return gateway.charge(order);
 }
 
+// Convention-based fallback: <methodName>Fallback() returning Supplier<T>
 public Supplier<PaymentResult> processPaymentFallback() {
     return () -> PaymentResult.declined("service unavailable");
 }
 ```
 
+### Programmatic usage with registry
+
+```java
+@Autowired
+private HeimdallRegistry registry;
+
+public void doWork() {
+    CircuitBreaker cb = registry.get("payments").orElseThrow();
+    return cb.execute(() -> externalCall());
+}
+```
+
+## Sidecar (Observability)
+
+Add `heimdall4j-sidecar` for automatic:
+
+- **Micrometer metrics** — counters for successes/failures/timeouts, state gauge, call duration timer
+- **Health indicator** — reports DOWN when any breaker is OPEN
+- **Actuator endpoint** — `GET /actuator/circuitbreakers` exposes all breaker states
+- **Structured logging** — SLF4J events for state transitions and failures
+
+## Circuit Breaker States
+
+```
+CLOSED → (failure rate exceeds threshold) → OPEN
+OPEN → (wait duration elapses) → HALF_OPEN
+HALF_OPEN → (probe calls succeed) → CLOSED
+HALF_OPEN → (probe call fails) → OPEN
+```
+
+## Key Design Decisions
+
+- **Ring buffer** for failure rate calculation (fixed-size, lock-free via AtomicReference + CAS)
+- **Integrated call timeout** — configurable per breaker, cancels slow calls
+- **Flow.Publisher** for event emission (Java 9+ reactive streams)
+- **Functional fallback** via `Supplier<T>`
+- **Probe count** strategy for half-open → closed transitions
+
 ## Requirements
 
 - Java 25+
 - Spring Boot 4.0+ (for spring-boot and sidecar modules)
+- Micrometer 1.14+ (for sidecar metrics)
+
+## Building
+
+```bash
+./gradlew clean build
+```
 
 ## License
 
