@@ -6,13 +6,36 @@
 
 Modern Java 25 circuit breaker library — slim, zero-dependency core with Spring Boot integration.
 
-## Modules
+## How It Works
 
-| Module | Description |
-|--------|-------------|
-| `heimdall4j-core` | Standalone circuit breaker — zero dependencies, pure Java 25 |
-| `heimdall4j-spring-boot` | Spring Boot auto-configuration, `@Heimdall` annotation |
-| `heimdall4j-sidecar` | Actuator endpoint, Micrometer metrics, structured logging |
+```mermaid
+stateDiagram-v2
+    [*] --> CLOSED
+    CLOSED --> OPEN : Failure rate ≥ threshold
+    OPEN --> HALF_OPEN : Wait duration elapsed
+    HALF_OPEN --> CLOSED : Probes succeed
+    HALF_OPEN --> OPEN : Probe fails
+```
+
+```mermaid
+flowchart LR
+    A[Call] --> B{Circuit<br/>State?}
+    B -->|CLOSED| C[Execute]
+    B -->|OPEN| D{Fallback?}
+    B -->|HALF_OPEN| E[Probe]
+    C -->|Success| F[Record ✓]
+    C -->|Failure| G[Record ✗]
+    C -->|Timeout| H[Cancel & Record ✗]
+    G --> I{Rate ≥<br/>threshold?}
+    I -->|Yes| J[Trip → OPEN]
+    I -->|No| K[Stay CLOSED]
+    E -->|Success| L{All probes<br/>passed?}
+    E -->|Failure| J
+    L -->|Yes| M[Reset → CLOSED]
+    L -->|No| N[Await next probe]
+    D -->|Yes| O[Return fallback]
+    D -->|No| P[Throw CircuitOpenException]
+```
 
 ## Installation
 
@@ -40,7 +63,9 @@ dependencies {
 </dependency>
 ```
 
-## Quick Start (Core)
+## Usage
+
+### Core (standalone, zero dependencies)
 
 ```java
 import io.github.haisher.heimdall4j.core.CircuitBreaker;
@@ -74,9 +99,9 @@ cb.eventPublisher().subscribe(new Flow.Subscriber<>() {
 });
 ```
 
-## Quick Start (Spring Boot)
+### Spring Boot
 
-### Configuration via properties
+#### Configuration via properties
 
 ```yaml
 heimdall4j:
@@ -91,7 +116,7 @@ heimdall4j:
       ring-buffer-size: 50
 ```
 
-### Annotation-based usage
+#### Annotation-based usage
 
 ```java
 @Heimdall("payments")
@@ -105,7 +130,7 @@ public Supplier<PaymentResult> processPaymentFallback() {
 }
 ```
 
-### Programmatic usage with registry
+#### Programmatic usage with registry
 
 ```java
 @Autowired
@@ -117,7 +142,7 @@ public void doWork() {
 }
 ```
 
-## Sidecar (Observability)
+### Observability (Sidecar)
 
 Add `heimdall4j-sidecar` for automatic:
 
@@ -126,16 +151,15 @@ Add `heimdall4j-sidecar` for automatic:
 - **Actuator endpoint** — `GET /actuator/circuitbreakers` exposes all breaker states
 - **Structured logging** — SLF4J events for state transitions and failures
 
-## Circuit Breaker States
+## Modules
 
-```
-CLOSED → (failure rate exceeds threshold) → OPEN
-OPEN → (wait duration elapses) → HALF_OPEN
-HALF_OPEN → (probe calls succeed) → CLOSED
-HALF_OPEN → (probe call fails) → OPEN
-```
+| Module | Description |
+|--------|-------------|
+| `heimdall4j-core` | Standalone circuit breaker — zero dependencies, pure Java 25 |
+| `heimdall4j-spring-boot` | Spring Boot auto-configuration, `@Heimdall` annotation |
+| `heimdall4j-sidecar` | Actuator endpoint, Micrometer metrics, structured logging |
 
-## Key Design Decisions
+## Design Decisions
 
 - **Ring buffer** for failure rate calculation (fixed-size, lock-free via AtomicReference + CAS)
 - **Integrated call timeout** — configurable per breaker, cancels slow calls
