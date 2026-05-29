@@ -25,6 +25,20 @@ class CircuitBreakerConfigTest {
     }
 
     @Test
+    @DisplayName("ofDefaults() creates config equivalent to builder defaults")
+    void ofDefaults() {
+        var config = CircuitBreakerConfig.ofDefaults();
+
+        assertEquals(50, config.failureRateThreshold());
+        assertEquals(100, config.ringBufferSize());
+        assertEquals(Duration.ofSeconds(30), config.waitDurationInOpenState());
+        assertEquals(10, config.permittedCallsInHalfOpen());
+        assertEquals(Duration.ofSeconds(5), config.callTimeout());
+        assertNotNull(config.recordFailure());
+        assertNotNull(config.clock());
+    }
+
+    @Test
     @DisplayName("builder accepts custom values")
     void customConfig() {
         var clock = Clock.systemUTC();

@@ -52,6 +52,14 @@ public record CircuitBreakerConfig(
         return new Builder();
     }
 
+    /**
+     * Creates a default configuration with sensible defaults for most use cases.
+     * Equivalent to {@code CircuitBreakerConfig.builder().build()}.
+     */
+    public static CircuitBreakerConfig ofDefaults() {
+        return new Builder().build();
+    }
+
     public static final class Builder {
         private int failureRateThreshold = 50;
         private int ringBufferSize = 100;
