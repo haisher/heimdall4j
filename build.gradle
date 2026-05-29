@@ -114,7 +114,10 @@ subprojects {
     }
 
     tasks.withType(Sign).configureEach {
-        onlyIf { !version.toString().endsWith('-SNAPSHOT') }
+        onlyIf {
+            !version.toString().endsWith('-SNAPSHOT') &&
+            (project.findProperty("signing.key") ?: System.getenv("GPG_PRIVATE_KEY")) != null
+        }
     }
 }
 
