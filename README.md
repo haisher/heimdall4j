@@ -8,6 +8,8 @@ Modern Java 25 circuit breaker library — slim, zero-dependency core with Sprin
 
 ## How It Works
 
+A circuit breaker monitors calls to external services and prevents cascading failures. It transitions between three states based on observed failure rates:
+
 ```mermaid
 stateDiagram-v2
     [*] --> CLOSED
@@ -16,6 +18,8 @@ stateDiagram-v2
     HALF_OPEN --> CLOSED : Probes succeed
     HALF_OPEN --> OPEN : Probe fails
 ```
+
+When a call is made, the breaker evaluates its current state to decide whether to execute, reject, or probe. Failures are tracked in a ring buffer, and timeouts are enforced with automatic cancellation:
 
 ```mermaid
 flowchart LR
