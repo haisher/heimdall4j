@@ -128,11 +128,35 @@ Add `heimdall4j-sidecar` for automatic:
 
 ## Circuit Breaker States
 
+```mermaid
+stateDiagram-v2
+    [*] --> CLOSED
+    CLOSED --> OPEN : Failure rate ≥ threshold
+    OPEN --> HALF_OPEN : Wait duration elapsed
+    HALF_OPEN --> CLOSED : Probes succeed
+    HALF_OPEN --> OPEN : Probe fails
 ```
-CLOSED → (failure rate exceeds threshold) → OPEN
-OPEN → (wait duration elapses) → HALF_OPEN
-HALF_OPEN → (probe calls succeed) → CLOSED
-HALF_OPEN → (probe call fails) → OPEN
+
+## How It Works
+
+```mermaid
+flowchart LR
+    A[Call] --> B{Circuit<br/>State?}
+    B -->|CLOSED| C[Execute]
+    B -->|OPEN| D{Fallback?}
+    B -->|HALF_OPEN| E[Probe]
+    C -->|Success| F[Record ✓]
+    C -->|Failure| G[Record ✗]
+    C -->|Timeout| H[Cancel & Record ✗]
+    G --> I{Rate ≥<br/>threshold?}
+    I -->|Yes| J[Trip → OPEN]
+    I -->|No| K[Stay CLOSED]
+    E -->|Success| L{All probes<br/>passed?}
+    E -->|Failure| J
+    L -->|Yes| M[Reset → CLOSED]
+    L -->|No| N[Await next probe]
+    D -->|Yes| O[Return fallback]
+    D -->|No| P[Throw CircuitOpenException]
 ```
 
 ## Key Design Decisions
