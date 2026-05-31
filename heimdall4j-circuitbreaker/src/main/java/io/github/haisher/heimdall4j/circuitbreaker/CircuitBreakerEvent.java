@@ -13,11 +13,10 @@ public sealed interface CircuitBreakerEvent permits
         CircuitBreakerEvent.CallFailure,
         CircuitBreakerEvent.CallTimeout {
 
-    /**
-     * The name of the circuit breaker that emitted this event.
-     */
+    /** The name of the circuit breaker that emitted this event. */
     String circuitBreakerName();
 
+    /** Emitted on state transitions (e.g. CLOSED → OPEN). */
     record StateTransition(
             String circuitBreakerName,
             StateName from,
@@ -25,17 +24,20 @@ public sealed interface CircuitBreakerEvent permits
             Instant timestamp
     ) implements CircuitBreakerEvent {}
 
+    /** Emitted when a protected call succeeds. */
     record CallSuccess(
             String circuitBreakerName,
             Duration elapsed
     ) implements CircuitBreakerEvent {}
 
+    /** Emitted when a protected call fails with a recorded exception. */
     record CallFailure(
             String circuitBreakerName,
             Throwable cause,
             Duration elapsed
     ) implements CircuitBreakerEvent {}
 
+    /** Emitted when a protected call exceeds the configured timeout. */
     record CallTimeout(
             String circuitBreakerName,
             Duration configuredTimeout

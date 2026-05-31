@@ -25,6 +25,7 @@ public record TimeoutConfig(
         return new TimeoutConfig(duration);
     }
 
+    /** Returns a new builder with sensible defaults. */
     public static Builder builder() {
         return new Builder();
     }
@@ -34,6 +35,7 @@ public record TimeoutConfig(
 
         Builder() {}
 
+        /** Maximum allowed execution time per call. Default: 5s. */
         public Builder duration(Duration duration) {
             this.duration = duration;
             return this;

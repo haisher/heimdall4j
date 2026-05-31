@@ -12,16 +12,16 @@ flowchart LR
     subgraph Sidecar
         MET[Metrics Binder]
         HLT[Health Indicator]
-        END[Actuator Endpoint]
+        ENDP[Actuator Endpoint]
         LOG[Event Logger]
     end
 
-    CB --> MET & HLT & END & LOG
+    CB --> MET & HLT & ENDP & LOG
     POL --> MET & LOG
 
     MET --> P[Prometheus / Grafana]
-    HLT --> A[/actuator/health]
-    END --> B[/actuator/circuitbreakers]
+    HLT --> A["GET /actuator/health"]
+    ENDP --> B["GET /actuator/circuitbreakers"]
     LOG --> S[SLF4J / stdout]
 ```
 

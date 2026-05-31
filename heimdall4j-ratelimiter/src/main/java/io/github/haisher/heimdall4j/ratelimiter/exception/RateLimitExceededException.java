@@ -14,10 +14,12 @@ public final class RateLimitExceededException extends RuntimeException {
         this.limitForPeriod = limitForPeriod;
     }
 
+    /** Returns the name of the rate limiter that rejected the call. */
     public String rateLimiterName() {
         return name;
     }
 
+    /** Returns the configured limit that was exceeded. */
     public int limitForPeriod() {
         return limitForPeriod;
     }

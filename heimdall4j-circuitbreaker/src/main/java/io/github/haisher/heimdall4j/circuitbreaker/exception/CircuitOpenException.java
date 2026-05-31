@@ -13,6 +13,7 @@ public final class CircuitOpenException extends RuntimeException {
         this.circuitBreakerName = circuitBreakerName;
     }
 
+    /** Returns the name of the circuit breaker that rejected the call. */
     public String getCircuitBreakerName() {
         return circuitBreakerName;
     }

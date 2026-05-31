@@ -30,6 +30,7 @@ public record RateLimiterConfig(
         return new RateLimiterConfig(limitForPeriod, refreshPeriod);
     }
 
+    /** Returns a new builder with sensible defaults. */
     public static Builder builder() {
         return new Builder();
     }
@@ -40,11 +41,13 @@ public record RateLimiterConfig(
 
         Builder() {}
 
+        /** Maximum calls allowed per refresh period. Default: 50. */
         public Builder limitForPeriod(int limit) {
             this.limitForPeriod = limit;
             return this;
         }
 
+        /** Duration of the fixed time window. Default: 1s. */
         public Builder refreshPeriod(Duration period) {
             this.refreshPeriod = period;
             return this;

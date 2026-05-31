@@ -17,10 +17,12 @@ public final class CallTimeoutException extends RuntimeException {
         this.configuredTimeout = configuredTimeout;
     }
 
+    /** Returns the name of the circuit breaker whose call timed out. */
     public String getCircuitBreakerName() {
         return circuitBreakerName;
     }
 
+    /** Returns the configured timeout duration that was exceeded. */
     public Duration getConfiguredTimeout() {
         return configuredTimeout;
     }

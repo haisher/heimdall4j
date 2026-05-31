@@ -45,6 +45,7 @@ public record RetryConfig(
         return new RetryConfig(maxAttempts, initialDelay, multiplier, _ -> true);
     }
 
+    /** Returns a new builder with sensible defaults. */
     public static Builder builder() {
         return new Builder();
     }
@@ -73,21 +74,25 @@ public record RetryConfig(
 
         Builder() {}
 
+        /** Total number of attempts including the initial call. Default: 3. */
         public Builder maxAttempts(int maxAttempts) {
             this.maxAttempts = maxAttempts;
             return this;
         }
 
+        /** Base delay between attempts. Default: 500ms. */
         public Builder delay(Duration delay) {
             this.delay = delay;
             return this;
         }
 
+        /** Backoff multiplier applied to delay on each retry. 1.0 = fixed delay. Default: 1.0. */
         public Builder multiplier(double multiplier) {
             this.multiplier = multiplier;
             return this;
         }
 
+        /** Predicate to determine which exceptions trigger a retry. Default: all. */
         public Builder retryOn(Predicate<Throwable> predicate) {
             this.retryOn = predicate;
             return this;

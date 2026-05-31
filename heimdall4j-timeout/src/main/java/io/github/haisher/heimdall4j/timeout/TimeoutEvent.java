@@ -8,15 +8,12 @@ import java.time.Duration;
  */
 public sealed interface TimeoutEvent {
 
+    /** The name of the timeout executor that emitted this event. */
     String name();
 
-    /**
-     * Emitted when a call completes within the timeout.
-     */
+    /** Emitted when a call completes within the configured timeout. */
     record Success(String name, Duration elapsed) implements TimeoutEvent {}
 
-    /**
-     * Emitted when a call exceeds the configured timeout.
-     */
+    /** Emitted when a call exceeds the configured timeout and is cancelled. */
     record TimedOut(String name, Duration timeout) implements TimeoutEvent {}
 }

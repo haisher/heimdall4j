@@ -165,41 +165,34 @@ public final class HeimdallPolicy {
             this.name = Objects.requireNonNull(name, "name must not be null");
         }
 
-        /**
-         * Adds a circuit breaker layer to the policy.
-         */
+        /** Adds a circuit breaker layer to the policy. */
         public Builder withCircuitBreaker(CircuitBreakerConfig config) {
             this.circuitBreakerConfig = Objects.requireNonNull(config);
             return this;
         }
 
-        /**
-         * Adds a retry layer to the policy.
-         */
+        /** Adds a retry layer to the policy. */
         public Builder withRetry(RetryConfig config) {
             this.retryConfig = Objects.requireNonNull(config);
             return this;
         }
 
-        /**
-         * Adds a rate limiter layer to the policy.
-         */
+        /** Adds a rate limiter layer to the policy. */
         public Builder withRateLimiter(RateLimiterConfig config) {
             this.rateLimiterConfig = Objects.requireNonNull(config);
             return this;
         }
 
-        /**
-         * Adds a timeout layer to the policy.
-         */
+        /** Adds a timeout layer to the policy. */
         public Builder withTimeout(TimeoutConfig config) {
             this.timeoutConfig = Objects.requireNonNull(config);
             return this;
         }
 
         /**
-         * Builds the policy with the configured layers.
-         * At least one layer must be configured.
+         * Builds the policy. At least one strategy must be configured.
+         *
+         * @throws IllegalStateException if no strategy is configured
          */
         public HeimdallPolicy build() {
             if (circuitBreakerConfig == null && retryConfig == null &&

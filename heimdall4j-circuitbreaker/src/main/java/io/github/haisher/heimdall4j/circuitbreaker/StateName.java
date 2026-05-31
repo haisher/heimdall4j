@@ -1,10 +1,13 @@
 package io.github.haisher.heimdall4j.circuitbreaker;
 
 /**
- * Public representation of circuit breaker states.
+ * Circuit breaker state names.
  */
 public enum StateName {
+    /** Normal operation — calls are executed and outcomes recorded. */
     CLOSED,
+    /** Circuit is tripped — calls are rejected immediately. */
     OPEN,
+    /** Probing — a limited number of calls are allowed to test recovery. */
     HALF_OPEN
 }

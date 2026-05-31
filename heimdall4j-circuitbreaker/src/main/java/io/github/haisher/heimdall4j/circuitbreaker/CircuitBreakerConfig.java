@@ -48,13 +48,15 @@ public record CircuitBreakerConfig(
         Objects.requireNonNull(clock, "clock must not be null");
     }
 
+    /**
+     * Returns a new builder with sensible defaults.
+     */
     public static Builder builder() {
         return new Builder();
     }
 
     /**
-     * Creates a default configuration with sensible defaults for most use cases.
-     * Equivalent to {@code CircuitBreakerConfig.builder().build()}.
+     * Creates a default configuration. Equivalent to {@code builder().build()}.
      */
     public static CircuitBreakerConfig ofDefaults() {
         return new Builder().build();
@@ -71,36 +73,43 @@ public record CircuitBreakerConfig(
 
         Builder() {}
 
+        /** Failure percentage (1–100) that trips the circuit. Default: 50. */
         public Builder failureRateThreshold(int threshold) {
             this.failureRateThreshold = threshold;
             return this;
         }
 
+        /** Number of calls tracked for failure rate calculation. Default: 100. */
         public Builder ringBufferSize(int size) {
             this.ringBufferSize = size;
             return this;
         }
 
+        /** How long the circuit stays open before transitioning to half-open. Default: 30s. */
         public Builder waitDurationInOpenState(Duration duration) {
             this.waitDurationInOpenState = duration;
             return this;
         }
 
+        /** Number of probe calls allowed in half-open before closing. Default: 10. */
         public Builder permittedCallsInHalfOpen(int count) {
             this.permittedCallsInHalfOpen = count;
             return this;
         }
 
+        /** Maximum duration per call before timeout. Default: 5s. */
         public Builder callTimeout(Duration timeout) {
             this.callTimeout = timeout;
             return this;
         }
 
+        /** Predicate to determine which exceptions count as failures. Default: all. */
         public Builder recordFailure(Predicate<Throwable> predicate) {
             this.recordFailure = predicate;
             return this;
         }
 
+        /** Clock for time-based operations. Override for testing. Default: system UTC. */
         public Builder clock(Clock clock) {
             this.clock = clock;
             return this;

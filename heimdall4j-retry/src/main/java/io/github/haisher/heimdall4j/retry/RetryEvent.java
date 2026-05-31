@@ -8,20 +8,15 @@ import java.time.Duration;
  */
 public sealed interface RetryEvent {
 
+    /** The name of the retry executor that emitted this event. */
     String name();
 
-    /**
-     * Emitted when a retry attempt is about to be made after a failure.
-     */
+    /** Emitted before each retry attempt (not emitted for the first call). */
     record Attempt(String name, int attemptNumber, int maxAttempts, Duration delay, Throwable lastException) implements RetryEvent {}
 
-    /**
-     * Emitted when the call succeeds (possibly after retries).
-     */
+    /** Emitted when the call succeeds (possibly after retries). */
     record Success(String name, int totalAttempts, Duration totalDuration) implements RetryEvent {}
 
-    /**
-     * Emitted when all retry attempts are exhausted.
-     */
+    /** Emitted when all retry attempts are exhausted. */
     record Exhausted(String name, int totalAttempts, Throwable lastException) implements RetryEvent {}
 }

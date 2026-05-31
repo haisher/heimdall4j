@@ -16,10 +16,12 @@ public final class CallTimeoutException extends RuntimeException {
         this.timeout = timeout;
     }
 
+    /** Returns the name of the timeout executor that timed out. */
     public String timeoutName() {
         return name;
     }
 
+    /** Returns the configured timeout duration that was exceeded. */
     public Duration timeout() {
         return timeout;
     }

@@ -14,10 +14,12 @@ public final class MaxRetriesExceededException extends RuntimeException {
         this.attempts = attempts;
     }
 
+    /** Returns the name of the retry executor that exhausted its attempts. */
     public String retryName() {
         return name;
     }
 
+    /** Returns the total number of attempts made. */
     public int attempts() {
         return attempts;
     }
