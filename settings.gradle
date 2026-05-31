@@ -1,5 +1,8 @@
 rootProject.name = 'heimdall4j'
 
 include 'heimdall4j-circuitbreaker'
+include 'heimdall4j-retry'
+include 'heimdall4j-ratelimiter'
+include 'heimdall4j-timeout'
 include 'heimdall4j-spring-boot'
 include 'heimdall4j-sidecar'
