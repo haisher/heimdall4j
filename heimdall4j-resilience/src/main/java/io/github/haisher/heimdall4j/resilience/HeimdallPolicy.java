@@ -49,6 +49,9 @@ public final class HeimdallPolicy {
 
     /**
      * Starts building a policy with the given name.
+     *
+     * @param name policy name for identification and events
+     * @return new builder instance
      */
     public static Builder of(String name) {
         return new Builder(name);
@@ -57,6 +60,10 @@ public final class HeimdallPolicy {
     /**
      * Executes the supplier through the configured policy layers.
      * Execution order: RateLimiter → Retry → Timeout → CircuitBreaker → call.
+     *
+     * @param supplier the operation to execute
+     * @param <T> result type
+     * @return the supplier's result
      */
     public <T> T execute(Supplier<T> supplier) {
         return execute(supplier, null);
@@ -75,6 +82,11 @@ public final class HeimdallPolicy {
      *
      * <p>Note: the fallback does NOT catch arbitrary supplier exceptions — it only handles
      * the specific failure mode of the innermost layer.
+     *
+     * @param supplier the operation to execute
+     * @param fallback fallback supplier invoked on policy failure (may be null)
+     * @param <T> result type
+     * @return the supplier's result or fallback result
      */
     public <T> T execute(Supplier<T> supplier, Supplier<T> fallback) {
         Objects.requireNonNull(supplier, "supplier must not be null");
@@ -111,6 +123,8 @@ public final class HeimdallPolicy {
 
     /**
      * Returns the name of this policy.
+     *
+     * @return policy name
      */
     public String name() {
         return name;
@@ -118,6 +132,8 @@ public final class HeimdallPolicy {
 
     /**
      * Returns the circuit breaker, or null if not configured.
+     *
+     * @return circuit breaker or null
      */
     public CircuitBreaker circuitBreaker() {
         return circuitBreaker;
@@ -125,6 +141,8 @@ public final class HeimdallPolicy {
 
     /**
      * Returns the retry executor, or null if not configured.
+     *
+     * @return retry executor or null
      */
     public RetryExecutor retryExecutor() {
         return retryExecutor;
@@ -132,6 +150,8 @@ public final class HeimdallPolicy {
 
     /**
      * Returns the rate limiter executor, or null if not configured.
+     *
+     * @return rate limiter executor or null
      */
     public RateLimiterExecutor rateLimiterExecutor() {
         return rateLimiterExecutor;
@@ -139,6 +159,8 @@ public final class HeimdallPolicy {
 
     /**
      * Returns the timeout executor, or null if not configured.
+     *
+     * @return timeout executor or null
      */
     public TimeoutExecutor timeoutExecutor() {
         return timeoutExecutor;
@@ -154,6 +176,7 @@ public final class HeimdallPolicy {
         if (timeoutExecutor != null) timeoutExecutor.close();
     }
 
+    /** Builder for {@link HeimdallPolicy}. */
     public static final class Builder {
         private final String name;
         private CircuitBreakerConfig circuitBreakerConfig;
@@ -165,25 +188,37 @@ public final class HeimdallPolicy {
             this.name = Objects.requireNonNull(name, "name must not be null");
         }
 
-        /** Adds a circuit breaker layer to the policy. */
+        /** Adds a circuit breaker layer to the policy.
+         * @param config circuit breaker configuration
+         * @return this builder
+         */
         public Builder withCircuitBreaker(CircuitBreakerConfig config) {
             this.circuitBreakerConfig = Objects.requireNonNull(config);
             return this;
         }
 
-        /** Adds a retry layer to the policy. */
+        /** Adds a retry layer to the policy.
+         * @param config retry configuration
+         * @return this builder
+         */
         public Builder withRetry(RetryConfig config) {
             this.retryConfig = Objects.requireNonNull(config);
             return this;
         }
 
-        /** Adds a rate limiter layer to the policy. */
+        /** Adds a rate limiter layer to the policy.
+         * @param config rate limiter configuration
+         * @return this builder
+         */
         public Builder withRateLimiter(RateLimiterConfig config) {
             this.rateLimiterConfig = Objects.requireNonNull(config);
             return this;
         }
 
-        /** Adds a timeout layer to the policy. */
+        /** Adds a timeout layer to the policy.
+         * @param config timeout configuration
+         * @return this builder
+         */
         public Builder withTimeout(TimeoutConfig config) {
             this.timeoutConfig = Objects.requireNonNull(config);
             return this;
@@ -192,6 +227,7 @@ public final class HeimdallPolicy {
         /**
          * Builds the policy. At least one strategy must be configured.
          *
+         * @return new policy instance
          * @throws IllegalStateException if no strategy is configured
          */
         public HeimdallPolicy build() {

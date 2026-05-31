@@ -37,6 +37,10 @@ public final class TimeoutExecutor {
 
     /**
      * Creates a new timeout executor with the given name and configuration.
+     *
+     * @param name executor name for identification and events
+     * @param config timeout configuration
+     * @return new executor instance
      */
     public static TimeoutExecutor of(String name, TimeoutConfig config) {
         return new TimeoutExecutor(name, config, Clock.systemUTC());
@@ -44,6 +48,11 @@ public final class TimeoutExecutor {
 
     /**
      * Creates a new timeout executor with a custom clock (useful for testing).
+     *
+     * @param name executor name for identification and events
+     * @param config timeout configuration
+     * @param clock clock used for duration measurements
+     * @return new executor instance
      */
     public static TimeoutExecutor of(String name, TimeoutConfig config, Clock clock) {
         return new TimeoutExecutor(name, config, clock);
@@ -52,6 +61,9 @@ public final class TimeoutExecutor {
     /**
      * Executes the supplier with the configured timeout.
      *
+     * @param supplier the operation to execute
+     * @param <T> result type
+     * @return the supplier's result
      * @throws CallTimeoutException if the call exceeds the timeout
      */
     public <T> T execute(Supplier<T> supplier) {
@@ -61,6 +73,11 @@ public final class TimeoutExecutor {
     /**
      * Executes the supplier with the configured timeout.
      * If the call times out and a fallback is provided, the fallback is invoked.
+     *
+     * @param supplier the operation to execute
+     * @param fallback fallback supplier invoked on timeout (may be null)
+     * @param <T> result type
+     * @return the supplier's result or fallback result
      */
     public <T> T execute(Supplier<T> supplier, Supplier<T> fallback) {
         Objects.requireNonNull(supplier, "supplier must not be null");
@@ -96,6 +113,8 @@ public final class TimeoutExecutor {
 
     /**
      * Returns the name of this timeout executor.
+     *
+     * @return executor name
      */
     public String name() {
         return name;
@@ -103,6 +122,8 @@ public final class TimeoutExecutor {
 
     /**
      * Returns the configuration of this timeout executor.
+     *
+     * @return timeout config
      */
     public TimeoutConfig config() {
         return config;
@@ -110,6 +131,8 @@ public final class TimeoutExecutor {
 
     /**
      * Returns a Flow.Publisher that emits timeout events.
+     *
+     * @return event publisher
      */
     public Flow.Publisher<TimeoutEvent> eventPublisher() {
         return eventPublisher;

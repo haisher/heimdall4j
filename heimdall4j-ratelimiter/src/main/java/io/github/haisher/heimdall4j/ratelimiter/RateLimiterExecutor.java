@@ -34,6 +34,10 @@ public final class RateLimiterExecutor {
 
     /**
      * Creates a new rate limiter with the given name and configuration.
+     *
+     * @param name rate limiter name for identification and events
+     * @param config rate limiter configuration
+     * @return new executor instance
      */
     public static RateLimiterExecutor of(String name, RateLimiterConfig config) {
         return new RateLimiterExecutor(name, config, Clock.systemUTC());
@@ -41,6 +45,11 @@ public final class RateLimiterExecutor {
 
     /**
      * Creates a new rate limiter with a custom clock (useful for testing).
+     *
+     * @param name rate limiter name for identification and events
+     * @param config rate limiter configuration
+     * @param clock clock used for window calculations
+     * @return new executor instance
      */
     public static RateLimiterExecutor of(String name, RateLimiterConfig config, Clock clock) {
         return new RateLimiterExecutor(name, config, clock);
@@ -49,6 +58,9 @@ public final class RateLimiterExecutor {
     /**
      * Executes the supplier if within the rate limit.
      *
+     * @param supplier the operation to execute
+     * @param <T> result type
+     * @return the supplier's result
      * @throws RateLimitExceededException if the rate limit is exceeded
      */
     public <T> T execute(Supplier<T> supplier) {
@@ -58,6 +70,11 @@ public final class RateLimiterExecutor {
     /**
      * Executes the supplier if within the rate limit.
      * If the limit is exceeded and a fallback is provided, the fallback is invoked.
+     *
+     * @param supplier the operation to execute
+     * @param fallback fallback supplier invoked when rate limit exceeded (may be null)
+     * @param <T> result type
+     * @return the supplier's result or fallback result
      */
     public <T> T execute(Supplier<T> supplier, Supplier<T> fallback) {
         Objects.requireNonNull(supplier, "supplier must not be null");
@@ -77,6 +94,8 @@ public final class RateLimiterExecutor {
 
     /**
      * Attempts to acquire a permit. Returns true if successful, false if rate limit exceeded.
+     *
+     * @return true if a permit was acquired
      */
     public boolean tryAcquire() {
         while (true) {
@@ -107,6 +126,8 @@ public final class RateLimiterExecutor {
 
     /**
      * Returns the name of this rate limiter.
+     *
+     * @return rate limiter name
      */
     public String name() {
         return name;
@@ -114,6 +135,8 @@ public final class RateLimiterExecutor {
 
     /**
      * Returns the configuration of this rate limiter.
+     *
+     * @return rate limiter config
      */
     public RateLimiterConfig config() {
         return config;
@@ -121,6 +144,8 @@ public final class RateLimiterExecutor {
 
     /**
      * Returns a Flow.Publisher that emits rate limiter events.
+     *
+     * @return event publisher
      */
     public Flow.Publisher<RateLimiterEvent> eventPublisher() {
         return eventPublisher;

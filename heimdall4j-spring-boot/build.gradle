@@ -9,6 +9,10 @@ dependencyManagement {
     }
 }
 
+tasks.withType(Javadoc).configureEach {
+    options.addBooleanOption('Xdoclint:-missing', true)
+}
+
 dependencies {
     api project(':heimdall4j-resilience')
 

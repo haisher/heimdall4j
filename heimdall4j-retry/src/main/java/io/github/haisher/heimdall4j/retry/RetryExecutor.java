@@ -30,6 +30,10 @@ public final class RetryExecutor {
 
     /**
      * Creates a new retry executor with the given name and configuration.
+     *
+     * @param name executor name for identification and events
+     * @param config retry configuration
+     * @return new executor instance
      */
     public static RetryExecutor of(String name, RetryConfig config) {
         return new RetryExecutor(name, config, Clock.systemUTC());
@@ -37,6 +41,11 @@ public final class RetryExecutor {
 
     /**
      * Creates a new retry executor with a custom clock (useful for testing).
+     *
+     * @param name executor name for identification and events
+     * @param config retry configuration
+     * @param clock clock used for duration measurements
+     * @return new executor instance
      */
     public static RetryExecutor of(String name, RetryConfig config, Clock clock) {
         return new RetryExecutor(name, config, clock);
@@ -45,6 +54,9 @@ public final class RetryExecutor {
     /**
      * Executes the supplier, retrying on failure according to the configuration.
      *
+     * @param supplier the operation to execute
+     * @param <T> result type
+     * @return the supplier's result
      * @throws MaxRetriesExceededException if all attempts are exhausted
      */
     public <T> T execute(Supplier<T> supplier) {
@@ -54,6 +66,11 @@ public final class RetryExecutor {
     /**
      * Executes the supplier with retries. If all attempts fail and a fallback is provided,
      * the fallback is invoked instead of throwing.
+     *
+     * @param supplier the operation to execute
+     * @param fallback fallback supplier invoked when retries are exhausted (may be null)
+     * @param <T> result type
+     * @return the supplier's result or fallback result
      */
     public <T> T execute(Supplier<T> supplier, Supplier<T> fallback) {
         Objects.requireNonNull(supplier, "supplier must not be null");
@@ -92,6 +109,8 @@ public final class RetryExecutor {
 
     /**
      * Returns the name of this retry executor.
+     *
+     * @return executor name
      */
     public String name() {
         return name;
@@ -99,6 +118,8 @@ public final class RetryExecutor {
 
     /**
      * Returns the configuration of this retry executor.
+     *
+     * @return retry config
      */
     public RetryConfig config() {
         return config;
@@ -106,6 +127,8 @@ public final class RetryExecutor {
 
     /**
      * Returns a Flow.Publisher that emits retry events.
+     *
+     * @return event publisher
      */
     public Flow.Publisher<RetryEvent> eventPublisher() {
         return eventPublisher;

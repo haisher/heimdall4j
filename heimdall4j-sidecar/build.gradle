@@ -9,11 +9,17 @@ dependencyManagement {
     }
 }
 
+tasks.withType(Javadoc).configureEach {
+    options.addBooleanOption('Xdoclint:-missing', true)
+}
+
 dependencies {
     api project(':heimdall4j-spring-boot')
 
     implementation 'org.springframework.boot:spring-boot-starter-actuator'
     implementation "io.micrometer:micrometer-core:${micrometerVersion}"
+
+    compileOnly 'com.fasterxml.jackson.core:jackson-annotations'
 
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'

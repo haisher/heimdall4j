@@ -38,6 +38,10 @@ public final class CircuitBreaker {
 
     /**
      * Creates a new circuit breaker with the given name and configuration.
+     *
+     * @param name circuit breaker name for identification and events
+     * @param config circuit breaker configuration
+     * @return new circuit breaker instance
      */
     public static CircuitBreaker of(String name, CircuitBreakerConfig config) {
         return new CircuitBreaker(name, config);
@@ -46,6 +50,9 @@ public final class CircuitBreaker {
     /**
      * Executes the supplier through the circuit breaker with no fallback.
      *
+     * @param supplier the call to protect
+     * @param <T> result type
+     * @return the supplier's result
      * @throws CircuitOpenException if the breaker is open
      * @throws CallTimeoutException if the call exceeds the configured timeout
      */
@@ -61,6 +68,7 @@ public final class CircuitBreaker {
      *
      * @param supplier the call to protect
      * @param fallback optional fallback when the circuit refuses the call
+     * @param <T> result type
      * @return the result of the supplier or fallback
      */
     public <T> T execute(Supplier<T> supplier, Supplier<T> fallback) {
@@ -99,6 +107,8 @@ public final class CircuitBreaker {
 
     /**
      * Returns the current state name of this circuit breaker.
+     *
+     * @return current state
      */
     public StateName state() {
         return stateRef.get().name();
@@ -106,6 +116,8 @@ public final class CircuitBreaker {
 
     /**
      * Returns the name of this circuit breaker.
+     *
+     * @return circuit breaker name
      */
     public String name() {
         return name;
@@ -113,6 +125,8 @@ public final class CircuitBreaker {
 
     /**
      * Returns the configuration of this circuit breaker.
+     *
+     * @return circuit breaker config
      */
     public CircuitBreakerConfig config() {
         return config;
@@ -121,6 +135,8 @@ public final class CircuitBreaker {
     /**
      * Returns a Flow.Publisher that emits circuit breaker events.
      * Subscribers receive events for state transitions, call outcomes, and timeouts.
+     *
+     * @return event publisher
      */
     public Flow.Publisher<CircuitBreakerEvent> eventPublisher() {
         return eventPublisher;
