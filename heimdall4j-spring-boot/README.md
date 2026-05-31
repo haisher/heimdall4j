@@ -4,12 +4,12 @@ Spring Boot 4 auto-configuration for Heimdall4j — YAML-driven setup, AOP annot
 
 ```mermaid
 flowchart TB
-    YAML[application.yml] --> AC[Auto-Configuration]
-    AC --> HR[HeimdallRegistry<br/>Circuit Breakers]
-    AC --> HPR[HeimdallPolicyRegistry<br/>Full Policies]
-    HR --> HA[@Heimdall aspect]
-    HPR --> RA[@Resilient aspect]
-    HA --> M[Your @Service methods]
+    YAML["application.yml"] --> AC["Auto-Configuration"]
+    AC --> HR["HeimdallRegistry"]
+    AC --> HPR["HeimdallPolicyRegistry"]
+    HR --> HA["Heimdall aspect"]
+    HPR --> RA["Resilient aspect"]
+    HA --> M["Your Service methods"]
     RA --> M
 ```
 
