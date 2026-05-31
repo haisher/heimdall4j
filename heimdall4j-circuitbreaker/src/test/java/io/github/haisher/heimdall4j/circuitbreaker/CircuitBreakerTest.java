@@ -325,7 +325,14 @@ class CircuitBreakerTest {
 
         // Interrupt the current thread before execute — future.get() will throw InterruptedException
         Thread.currentThread().interrupt();
-        assertThrows(RuntimeException.class, () -> cb.execute(() -> "value"));
+        assertThrows(RuntimeException.class, () -> cb.execute(() -> {
+            try {
+                Thread.sleep(Duration.ofSeconds(5));
+            } catch (InterruptedException e) {
+                // expected
+            }
+            return "value";
+        }));
 
         // Interrupt flag should be restored
         assertTrue(Thread.interrupted(), "Interrupt flag should be set");
