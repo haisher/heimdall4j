@@ -1,7 +1,7 @@
 # Heimdall4j
 
 [![CI](https://github.com/haisher/heimdall4j/actions/workflows/ci.yml/badge.svg)](https://github.com/haisher/heimdall4j/actions/workflows/ci.yml)
-[![Maven Central](https://img.shields.io/maven-central/v/io.github.haisher/heimdall4j-core)](https://central.sonatype.com/artifact/io.github.haisher/heimdall4j-core)
+[![Maven Central](https://img.shields.io/maven-central/v/io.github.haisher/heimdall4j-circuitbreaker)](https://central.sonatype.com/artifact/io.github.haisher/heimdall4j-circuitbreaker)
 [![codecov](https://codecov.io/gh/haisher/heimdall4j/graph/badge.svg)](https://codecov.io/gh/haisher/heimdall4j)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
@@ -48,7 +48,7 @@ flowchart LR
 
 ```groovy
 dependencies {
-    implementation 'io.github.haisher:heimdall4j-core:0.1.1'
+    implementation 'io.github.haisher:heimdall4j-circuitbreaker:0.1.1'
 
     // Optional: Spring Boot integration
     implementation 'io.github.haisher:heimdall4j-spring-boot:0.1.1'
@@ -63,7 +63,7 @@ dependencies {
 ```xml
 <dependency>
     <groupId>io.github.haisher</groupId>
-    <artifactId>heimdall4j-core</artifactId>
+    <artifactId>heimdall4j-circuitbreaker</artifactId>
     <version>0.1.1</version>
 </dependency>
 ```
@@ -73,8 +73,8 @@ dependencies {
 ### Core (standalone, zero dependencies)
 
 ```java
-import io.github.haisher.heimdall4j.core.CircuitBreaker;
-import io.github.haisher.heimdall4j.core.CircuitBreakerConfig;
+import io.github.haisher.heimdall4j.circuitbreaker.CircuitBreaker;
+import io.github.haisher.heimdall4j.circuitbreaker.CircuitBreakerConfig;
 
 var config = CircuitBreakerConfig.builder()
     .failureRateThreshold(50)
@@ -160,7 +160,7 @@ Add `heimdall4j-sidecar` for automatic:
 
 | Module | Description |
 |--------|-------------|
-| `heimdall4j-core` | Standalone circuit breaker — zero dependencies, pure Java 25 |
+| `heimdall4j-circuitbreaker` | Standalone circuit breaker — zero dependencies, pure Java 25 |
 | `heimdall4j-spring-boot` | Spring Boot auto-configuration, `@Heimdall` annotation |
 | `heimdall4j-sidecar` | Actuator endpoint, Micrometer metrics, structured logging |
 

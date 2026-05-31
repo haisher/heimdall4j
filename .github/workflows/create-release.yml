@@ -136,6 +136,6 @@ jobs:
           generate_release_notes: true
           prerelease: ${{ inputs.prerelease != '' }}
           files: |
-            heimdall4j-core/build/libs/*.jar
+            heimdall4j-circuitbreaker/build/libs/*.jar
             heimdall4j-spring-boot/build/libs/*.jar
             heimdall4j-sidecar/build/libs/*.jar

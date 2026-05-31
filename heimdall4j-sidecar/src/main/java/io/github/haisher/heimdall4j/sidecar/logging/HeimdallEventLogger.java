@@ -1,7 +1,7 @@
 package io.github.haisher.heimdall4j.sidecar.logging;
 
-import io.github.haisher.heimdall4j.core.CircuitBreaker;
-import io.github.haisher.heimdall4j.core.CircuitBreakerEvent;
+import io.github.haisher.heimdall4j.circuitbreaker.CircuitBreaker;
+import io.github.haisher.heimdall4j.circuitbreaker.CircuitBreakerEvent;
 import io.github.haisher.heimdall4j.spring.HeimdallRegistry;
 
 import org.slf4j.Logger;

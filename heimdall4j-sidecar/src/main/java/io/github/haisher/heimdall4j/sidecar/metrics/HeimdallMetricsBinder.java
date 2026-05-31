@@ -1,8 +1,8 @@
 package io.github.haisher.heimdall4j.sidecar.metrics;
 
-import io.github.haisher.heimdall4j.core.CircuitBreaker;
-import io.github.haisher.heimdall4j.core.CircuitBreakerEvent;
-import io.github.haisher.heimdall4j.core.StateName;
+import io.github.haisher.heimdall4j.circuitbreaker.CircuitBreaker;
+import io.github.haisher.heimdall4j.circuitbreaker.CircuitBreakerEvent;
+import io.github.haisher.heimdall4j.circuitbreaker.StateName;
 import io.github.haisher.heimdall4j.spring.HeimdallRegistry;
 
 import io.micrometer.core.instrument.Counter;

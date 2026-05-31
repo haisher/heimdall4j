@@ -1,7 +1,7 @@
 package io.github.haisher.heimdall4j.spring;
 
-import io.github.haisher.heimdall4j.core.CircuitBreaker;
-import io.github.haisher.heimdall4j.core.CircuitBreakerConfig;
+import io.github.haisher.heimdall4j.circuitbreaker.CircuitBreaker;
+import io.github.haisher.heimdall4j.circuitbreaker.CircuitBreakerConfig;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;

@@ -1,6 +1,6 @@
 package io.github.haisher.heimdall4j.spring.autoconfigure;
 
-import io.github.haisher.heimdall4j.core.StateName;
+import io.github.haisher.heimdall4j.circuitbreaker.StateName;
 import io.github.haisher.heimdall4j.spring.HeimdallRegistry;
 import io.github.haisher.heimdall4j.spring.annotation.HeimdallAspect;
 

@@ -1,6 +1,6 @@
 package io.github.haisher.heimdall4j.spring;
 
-import io.github.haisher.heimdall4j.core.CircuitBreaker;
+import io.github.haisher.heimdall4j.circuitbreaker.CircuitBreaker;
 
 import java.util.Collection;
 import java.util.Collections;

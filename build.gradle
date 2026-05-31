@@ -133,7 +133,7 @@ jreleaser {
                     active = 'RELEASE'
                     url = 'https://central.sonatype.com/api/v1/publisher'
                     stagingRepositories = [
-                        'heimdall4j-core/build/staging-deploy',
+                        'heimdall4j-circuitbreaker/build/staging-deploy',
                         'heimdall4j-spring-boot/build/staging-deploy',
                         'heimdall4j-sidecar/build/staging-deploy'
                     ]

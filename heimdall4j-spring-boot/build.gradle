@@ -10,7 +10,7 @@ dependencyManagement {
 }
 
 dependencies {
-    api project(':heimdall4j-core')
+    api project(':heimdall4j-circuitbreaker')
 
     implementation 'org.springframework.boot:spring-boot-autoconfigure'
     implementation 'org.springframework:spring-aop'
