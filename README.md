@@ -5,176 +5,168 @@
 [![codecov](https://codecov.io/gh/haisher/heimdall4j/graph/badge.svg)](https://codecov.io/gh/haisher/heimdall4j)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-Modern Java 25 circuit breaker library — slim, zero-dependency core with Spring Boot integration.
+A modern Java 25 resilience toolkit — composable, lightweight, and Spring Boot–ready.
 
-## How It Works
-
-A circuit breaker monitors calls to external services and prevents cascading failures. It transitions between three states based on observed failure rates:
-
-```mermaid
-stateDiagram-v2
-    [*] --> CLOSED
-    CLOSED --> OPEN : Failure rate ≥ threshold
-    OPEN --> HALF_OPEN : Wait duration elapsed
-    HALF_OPEN --> CLOSED : Probes succeed
-    HALF_OPEN --> OPEN : Probe fails
-```
-
-When a call is made, the breaker evaluates its current state to decide whether to execute, reject, or probe. Failures are tracked in a ring buffer, and timeouts are enforced with automatic cancellation:
+Protect your service calls with circuit breakers, retries, rate limiters, and timeouts that you can use standalone or compose together into a single policy.
 
 ```mermaid
 flowchart LR
-    A[Call] --> B{Circuit<br/>State?}
-    B -->|CLOSED| C[Execute]
-    B -->|OPEN| D{Fallback?}
-    B -->|HALF_OPEN| E[Probe]
-    C -->|Success| F[Record ✓]
-    C -->|Failure| G[Record ✗]
-    C -->|Timeout| H[Cancel & Record ✗]
-    G --> I{Rate ≥<br/>threshold?}
-    I -->|Yes| J[Trip → OPEN]
-    I -->|No| K[Stay CLOSED]
-    E -->|Success| L{All probes<br/>passed?}
-    E -->|Failure| J
-    L -->|Yes| M[Reset → CLOSED]
-    L -->|No| N[Await next probe]
-    D -->|Yes| O[Return fallback]
-    D -->|No| P[Throw CircuitOpenException]
+    subgraph Heimdall4j
+        RL[Rate Limiter] --> RT[Retry]
+        RT --> TO[Timeout]
+        TO --> CB[Circuit Breaker]
+    end
+    A[Your Code] --> RL
+    CB --> S[External Service]
 ```
 
-## Installation
+## Why Heimdall4j?
 
-### Gradle
+- **Zero dependencies** — each resilience module is standalone pure Java with no transitive baggage
+- **Composable** — combine strategies à la carte; use one or all together
+- **Modern Java 25** — records, sealed interfaces, virtual threads, `Flow.Publisher`
+- **Spring Boot 4 native** — auto-configuration, YAML properties, AOP annotations
+- **Observable** — Micrometer metrics, health checks, and structured logging out of the box
+- **Lock-free** — AtomicReference CAS patterns for thread safety without blocking
+
+## Quick Start
 
 ```groovy
+// Pick what you need
 dependencies {
-    implementation 'io.github.haisher:heimdall4j-circuitbreaker:0.1.1'
+    implementation 'io.github.haisher:heimdall4j-circuitbreaker:0.1.2'
+    implementation 'io.github.haisher:heimdall4j-retry:0.1.2'
+    implementation 'io.github.haisher:heimdall4j-ratelimiter:0.1.2'
+    implementation 'io.github.haisher:heimdall4j-timeout:0.1.2'
 
-    // Optional: Spring Boot integration
-    implementation 'io.github.haisher:heimdall4j-spring-boot:0.1.1'
+    // Or use the composable policy (pulls all of the above)
+    implementation 'io.github.haisher:heimdall4j-resilience:0.1.2'
 
-    // Optional: Metrics, health checks, and logging
-    implementation 'io.github.haisher:heimdall4j-sidecar:0.1.1'
+    // Spring Boot integration
+    implementation 'io.github.haisher:heimdall4j-spring-boot:0.1.2'
+
+    // Observability (metrics, health, logging)
+    implementation 'io.github.haisher:heimdall4j-sidecar:0.1.2'
 }
 ```
 
-### Maven
-
 ```xml
+<!-- Maven -->
 <dependency>
     <groupId>io.github.haisher</groupId>
-    <artifactId>heimdall4j-circuitbreaker</artifactId>
-    <version>0.1.1</version>
+    <artifactId>heimdall4j-resilience</artifactId>
+    <version>0.1.2</version>
 </dependency>
 ```
 
 ## Usage
 
-### Core (standalone, zero dependencies)
+### Standalone (no framework)
 
 ```java
-import io.github.haisher.heimdall4j.circuitbreaker.CircuitBreaker;
-import io.github.haisher.heimdall4j.circuitbreaker.CircuitBreakerConfig;
-
-var config = CircuitBreakerConfig.builder()
+// Individual strategy
+var cb = CircuitBreaker.of("payments", CircuitBreakerConfig.builder()
     .failureRateThreshold(50)
-    .ringBufferSize(100)
-    .waitDurationInOpenState(Duration.ofSeconds(30))
-    .permittedCallsInHalfOpen(10)
     .callTimeout(Duration.ofSeconds(2))
-    .build();
+    .build());
 
-var cb = CircuitBreaker.of("payments", config);
-
-// With fallback
-var result = cb.execute(
-    () -> callExternalService(),
-    () -> fallbackValue()
-);
-
-// Without fallback (throws CircuitOpenException when open)
-var result = cb.execute(() -> callExternalService());
+var result = cb.execute(() -> paymentClient.charge(order));
 ```
 
-### Event Subscription
-
 ```java
-cb.eventPublisher().subscribe(new Flow.Subscriber<>() {
-    // React to state transitions, call successes, failures, and timeouts
-});
+// Composable policy — chain multiple strategies together
+var policy = HeimdallPolicy.of("payments")
+    .withRateLimiter(RateLimiterConfig.of(100, Duration.ofSeconds(1)))
+    .withRetry(RetryConfig.exponentialBackoff(3, Duration.ofMillis(200), 2.0))
+    .withTimeout(TimeoutConfig.ofDuration(Duration.ofSeconds(2)))
+    .withCircuitBreaker(CircuitBreakerConfig.builder().build())
+    .build();
+
+var result = policy.execute(
+    () -> paymentClient.charge(order),
+    () -> PaymentResult.declined("service unavailable")  // fallback
+);
 ```
 
 ### Spring Boot
-
-#### Configuration via properties
 
 ```yaml
 heimdall4j:
   instances:
     payments:
-      failure-rate-threshold: 50
-      ring-buffer-size: 100
-      wait-duration: 30s
-      call-timeout: 2s
-    inventory:
-      failure-rate-threshold: 70
-      ring-buffer-size: 50
+      circuit-breaker:
+        failure-rate-threshold: 50
+        ring-buffer-size: 100
+        wait-duration: 30s
+      retry:
+        max-attempts: 3
+        delay: 200ms
+        multiplier: 2.0
+      rate-limiter:
+        limit-for-period: 100
+        refresh-period: 1s
+      timeout:
+        duration: 2s
 ```
 
-#### Annotation-based usage
-
 ```java
-@Heimdall("payments")
+@Resilient("payments")
 public PaymentResult processPayment(Order order) {
     return gateway.charge(order);
 }
 
-// Convention-based fallback: <methodName>Fallback() returning Supplier<T>
 public Supplier<PaymentResult> processPaymentFallback() {
     return () -> PaymentResult.declined("service unavailable");
 }
 ```
 
-#### Programmatic usage with registry
-
-```java
-@Autowired
-private HeimdallRegistry registry;
-
-public void doWork() {
-    CircuitBreaker cb = registry.get("payments").orElseThrow();
-    return cb.execute(() -> externalCall());
-}
-```
-
-### Observability (Sidecar)
-
-Add `heimdall4j-sidecar` for automatic:
-
-- **Micrometer metrics** — counters for successes/failures/timeouts, state gauge, call duration timer
-- **Health indicator** — reports DOWN when any breaker is OPEN
-- **Actuator endpoint** — `GET /actuator/circuitbreakers` exposes all breaker states
-- **Structured logging** — SLF4J events for state transitions and failures
-
 ## Modules
 
-| Module | Description |
-|--------|-------------|
-| `heimdall4j-circuitbreaker` | Standalone circuit breaker — zero dependencies, pure Java 25 |
-| `heimdall4j-spring-boot` | Spring Boot auto-configuration, `@Heimdall` annotation |
-| `heimdall4j-sidecar` | Actuator endpoint, Micrometer metrics, structured logging |
+| Module | Description | Docs |
+|--------|-------------|------|
+| [`heimdall4j-circuitbreaker`](heimdall4j-circuitbreaker/) | Circuit breaker — ring buffer, state machine, integrated timeout | [README](heimdall4j-circuitbreaker/README.md) |
+| [`heimdall4j-retry`](heimdall4j-retry/) | Retry — fixed delay or exponential backoff | [README](heimdall4j-retry/README.md) |
+| [`heimdall4j-ratelimiter`](heimdall4j-ratelimiter/) | Rate limiter — fixed-window algorithm | [README](heimdall4j-ratelimiter/README.md) |
+| [`heimdall4j-timeout`](heimdall4j-timeout/) | Timeout — virtual thread execution with cancellation | [README](heimdall4j-timeout/README.md) |
+| [`heimdall4j-resilience`](heimdall4j-resilience/) | Composable policy — chains all strategies together | [README](heimdall4j-resilience/README.md) |
+| [`heimdall4j-spring-boot`](heimdall4j-spring-boot/) | Spring Boot auto-configuration, `@Heimdall` and `@Resilient` | [README](heimdall4j-spring-boot/README.md) |
+| [`heimdall4j-sidecar`](heimdall4j-sidecar/) | Micrometer metrics, health checks, actuator endpoint, logging | [README](heimdall4j-sidecar/README.md) |
 
-## Design Decisions
+## Architecture
 
-- **Ring buffer** for failure rate calculation (fixed-size, lock-free via AtomicReference + CAS)
-- **Integrated call timeout** — configurable per breaker, cancels slow calls
-- **Flow.Publisher** for event emission (Java 9+ reactive streams)
-- **Functional fallback** via `Supplier<T>`
-- **Probe count** strategy for half-open → closed transitions
+```mermaid
+flowchart TB
+    subgraph Standalone["Standalone Modules (zero dependencies)"]
+        CB[heimdall4j-circuitbreaker]
+        RT[heimdall4j-retry]
+        RL[heimdall4j-ratelimiter]
+        TO[heimdall4j-timeout]
+    end
+
+    RES[heimdall4j-resilience] --> CB & RT & RL & TO
+
+    subgraph Spring["Spring Boot"]
+        SB[heimdall4j-spring-boot] --> RES
+        SC[heimdall4j-sidecar] --> SB
+    end
+```
+
+Each standalone module works independently with no dependencies. The `resilience` module composes them into a unified policy. The Spring modules add auto-configuration and observability on top.
+
+## Design Principles
+
+| Principle | Implementation |
+|-----------|---------------|
+| Lock-free concurrency | AtomicReference CAS loops — no synchronized blocks |
+| Event-driven | `java.util.concurrent.Flow.Publisher` for all events |
+| Functional fallbacks | `Supplier<T>` — compose however you want |
+| Testable | `Clock` injection on every executor |
+| Immutable config | Java `record` for all configuration |
+| Type-safe events | `sealed interface` per module |
 
 ## Requirements
 
-- Java 25+
+- **Java 25+**
 - Spring Boot 4.0+ (for spring-boot and sidecar modules)
 - Micrometer 1.14+ (for sidecar metrics)
 
