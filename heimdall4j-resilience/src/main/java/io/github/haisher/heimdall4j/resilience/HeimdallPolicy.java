@@ -64,7 +64,17 @@ public final class HeimdallPolicy {
 
     /**
      * Executes the supplier through the configured policy layers with a fallback.
-     * The fallback is invoked if the outermost failing layer supports it.
+     *
+     * <p>The fallback is delegated to the innermost configured layer to avoid double-invocation:
+     * <ul>
+     *   <li>If a circuit breaker is configured, fallback applies when the circuit refuses the call</li>
+     *   <li>If only timeout is configured, fallback applies on timeout</li>
+     *   <li>If only retry is configured, fallback applies after retries are exhausted</li>
+     *   <li>If only rate limiter is configured, fallback applies when rate limit is exceeded</li>
+     * </ul>
+     *
+     * <p>Note: the fallback does NOT catch arbitrary supplier exceptions — it only handles
+     * the specific failure mode of the innermost layer.
      */
     public <T> T execute(Supplier<T> supplier, Supplier<T> fallback) {
         Objects.requireNonNull(supplier, "supplier must not be null");

@@ -55,10 +55,12 @@ public final class CircuitBreaker {
 
     /**
      * Executes the supplier through the circuit breaker.
-     * If the breaker is open and a fallback is provided, the fallback is invoked.
+     * If the breaker is open (or half-open probe limit reached) and a fallback is provided,
+     * the fallback is invoked instead of throwing {@link CircuitOpenException}.
+     * Note: the fallback is NOT invoked on supplier exceptions — only when the circuit refuses the call.
      *
      * @param supplier the call to protect
-     * @param fallback optional fallback when the breaker is open or call fails
+     * @param fallback optional fallback when the circuit refuses the call
      * @return the result of the supplier or fallback
      */
     public <T> T execute(Supplier<T> supplier, Supplier<T> fallback) {
@@ -127,6 +129,8 @@ public final class CircuitBreaker {
     /**
      * Closes the event publisher, stopping event emission.
      * The circuit breaker remains functional after close — it just stops publishing events.
+     * The virtual-thread executor is lightweight and will be garbage collected when
+     * the circuit breaker is no longer referenced.
      */
     public void close() {
         eventPublisher.close();

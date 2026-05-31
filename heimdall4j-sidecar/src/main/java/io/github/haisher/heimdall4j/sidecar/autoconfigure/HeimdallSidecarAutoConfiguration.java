@@ -22,14 +22,18 @@ import org.springframework.context.annotation.Bean;
 /**
  * Auto-configuration for Heimdall4j sidecar — metrics, health, endpoint, and logging
  * for both circuit breaker and full resilience policies.
+ *
+ * <p>Supports both legacy circuit-breaker-only setups (via {@link HeimdallRegistry})
+ * and full resilience setups (via {@link HeimdallPolicyRegistry}). Each bean is
+ * conditionally created based on which registries are available.
  */
 @AutoConfiguration
-@ConditionalOnBean(HeimdallRegistry.class)
 public class HeimdallSidecarAutoConfiguration {
 
     @Bean
     @ConditionalOnMissingBean
     @ConditionalOnClass(MeterRegistry.class)
+    @ConditionalOnBean(HeimdallRegistry.class)
     public HeimdallMetricsBinder heimdallMetricsBinder(MeterRegistry meterRegistry, HeimdallRegistry registry) {
         return new HeimdallMetricsBinder(meterRegistry, registry);
     }
@@ -46,6 +50,7 @@ public class HeimdallSidecarAutoConfiguration {
     @Bean
     @ConditionalOnMissingBean(name = "heimdallHealthIndicator")
     @ConditionalOnClass(HealthIndicator.class)
+    @ConditionalOnBean(HeimdallRegistry.class)
     public HeimdallHealthIndicator heimdallHealthIndicator(HeimdallRegistry registry) {
         return new HeimdallHealthIndicator(registry);
     }
@@ -53,12 +58,14 @@ public class HeimdallSidecarAutoConfiguration {
     @Bean
     @ConditionalOnMissingBean
     @ConditionalOnClass(Endpoint.class)
+    @ConditionalOnBean(HeimdallRegistry.class)
     public HeimdallEndpoint heimdallEndpoint(HeimdallRegistry registry) {
         return new HeimdallEndpoint(registry);
     }
 
     @Bean
     @ConditionalOnMissingBean
+    @ConditionalOnBean(HeimdallRegistry.class)
     public HeimdallEventLogger heimdallEventLogger(HeimdallRegistry registry) {
         return new HeimdallEventLogger(registry);
     }

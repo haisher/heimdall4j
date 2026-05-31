@@ -131,6 +131,13 @@ public class HeimdallProperties {
 
         /**
          * Returns true if this instance uses the legacy flat circuit-breaker-only config.
+         *
+         * <p>Legacy format uses flat properties (e.g. {@code heimdall4j.instances.payments.failure-rate-threshold=50}).
+         * Nested format uses grouped properties (e.g. {@code heimdall4j.instances.payments.circuit-breaker.failure-rate-threshold=50}).
+         *
+         * <p><strong>Important:</strong> Mixing legacy flat properties with nested sections is not supported.
+         * If any nested section (circuit-breaker, retry, rate-limiter, timeout) is present,
+         * the flat properties are ignored and only nested configuration is used.
          */
         public boolean isLegacyConfig() {
             return circuitBreaker == null && retry == null && rateLimiter == null && timeout == null
