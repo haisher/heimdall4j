@@ -88,6 +88,26 @@ jobs:
       - name: Build and test
         run: ./gradlew clean build
 
+      - name: Commit release version and push
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add build.gradle
+          git commit -m "release: v${{ steps.version.outputs.version }}"
+          git tag "v${{ steps.version.outputs.version }}"
+
+          sed -i "s/version = '.*'/version = '${{ steps.version.outputs.next_snapshot }}'/" build.gradle
+          git add build.gradle
+          git commit -m "chore: bump to ${{ steps.version.outputs.next_snapshot }}"
+
+          git pull --rebase origin main
+          git push origin main
+          git push origin "v${{ steps.version.outputs.version }}"
+
+      - name: Set release version for publishing
+        run: |
+          sed -i "s/version = '.*'/version = '${{ steps.version.outputs.version }}'/" build.gradle
+
       - name: Publish to GitHub Packages
         run: ./gradlew publishMavenPublicationToGitHubPackagesRepository
         env:
@@ -107,26 +127,6 @@ jobs:
           JRELEASER_GPG_PUBLIC_KEY: ${{ secrets.GPG_PUBLIC_KEY }}
           JRELEASER_GPG_SECRET_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
           JRELEASER_GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
-
-      - name: Commit release version
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add build.gradle
-          git commit -m "release: v${{ steps.version.outputs.version }}"
-          git tag "v${{ steps.version.outputs.version }}"
-
-      - name: Set next development version
-        run: |
-          sed -i "s/version = '.*'/version = '${{ steps.version.outputs.next_snapshot }}'/" build.gradle
-          git add build.gradle
-          git commit -m "chore: bump to ${{ steps.version.outputs.next_snapshot }}"
-
-      - name: Push changes and tag
-        run: |
-          git pull --rebase origin main
-          git push origin main
-          git push origin "v${{ steps.version.outputs.version }}"
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v3
