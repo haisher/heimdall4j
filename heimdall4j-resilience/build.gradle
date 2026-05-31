@@ -1,0 +1,20 @@
+dependencies {
+    api project(':heimdall4j-circuitbreaker')
+    api project(':heimdall4j-retry')
+    api project(':heimdall4j-ratelimiter')
+    api project(':heimdall4j-timeout')
+
+    testImplementation platform("org.junit:junit-bom:${junitVersion}")
+    testImplementation 'org.junit.jupiter:junit-jupiter'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+
+jacocoTestCoverageVerification {
+    violationRules {
+        rule {
+            limit {
+                minimum = 0.90
+            }
+        }
+    }
+}
