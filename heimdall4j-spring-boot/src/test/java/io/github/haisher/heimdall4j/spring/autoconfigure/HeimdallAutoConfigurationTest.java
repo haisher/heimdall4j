@@ -1,8 +1,10 @@
 package io.github.haisher.heimdall4j.spring.autoconfigure;
 
 import io.github.haisher.heimdall4j.circuitbreaker.StateName;
+import io.github.haisher.heimdall4j.spring.HeimdallPolicyRegistry;
 import io.github.haisher.heimdall4j.spring.HeimdallRegistry;
 import io.github.haisher.heimdall4j.spring.annotation.HeimdallAspect;
+import io.github.haisher.heimdall4j.spring.annotation.ResilientAspect;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -24,12 +26,14 @@ class HeimdallAutoConfigurationTest {
         contextRunner.run(context -> {
             assertThat(context).hasSingleBean(HeimdallRegistry.class);
             assertThat(context.getBean(HeimdallRegistry.class).size()).isZero();
+            assertThat(context).hasSingleBean(HeimdallPolicyRegistry.class);
+            assertThat(context.getBean(HeimdallPolicyRegistry.class).size()).isZero();
         });
     }
 
     @Test
-    @DisplayName("registers circuit breakers from properties")
-    void registersFromProperties() {
+    @DisplayName("registers circuit breakers from legacy flat properties")
+    void registersFromLegacyProperties() {
         contextRunner
                 .withPropertyValues(
                         "heimdall4j.instances.payments.failure-rate-threshold=60",
@@ -53,6 +57,31 @@ class HeimdallAutoConfigurationTest {
     }
 
     @Test
+    @DisplayName("registers policies from nested config properties")
+    void registersFromNestedProperties() {
+        contextRunner
+                .withPropertyValues(
+                        "heimdall4j.instances.payments.circuit-breaker.failure-rate-threshold=60",
+                        "heimdall4j.instances.payments.retry.max-attempts=3",
+                        "heimdall4j.instances.payments.retry.delay=200ms",
+                        "heimdall4j.instances.payments.rate-limiter.limit-for-period=100",
+                        "heimdall4j.instances.payments.rate-limiter.refresh-period=1s",
+                        "heimdall4j.instances.payments.timeout.duration=2s"
+                )
+                .run(context -> {
+                    var policyRegistry = context.getBean(HeimdallPolicyRegistry.class);
+                    assertThat(policyRegistry.size()).isEqualTo(1);
+
+                    var policy = policyRegistry.get("payments");
+                    assertThat(policy).isPresent();
+                    assertThat(policy.get().circuitBreaker()).isNotNull();
+                    assertThat(policy.get().retryExecutor()).isNotNull();
+                    assertThat(policy.get().rateLimiterExecutor()).isNotNull();
+                    assertThat(policy.get().timeoutExecutor()).isNotNull();
+                });
+    }
+
+    @Test
     @DisplayName("applies default values for unspecified properties")
     void defaultPropertyValues() {
         contextRunner
@@ -61,7 +90,6 @@ class HeimdallAutoConfigurationTest {
                     var registry = context.getBean(HeimdallRegistry.class);
                     var breaker = registry.get("myservice");
                     assertThat(breaker).isPresent();
-                    // Breaker starts in CLOSED state
                     assertThat(breaker.get().state()).isEqualTo(StateName.CLOSED);
                 });
     }
@@ -74,16 +102,16 @@ class HeimdallAutoConfigurationTest {
                 .withPropertyValues("heimdall4j.instances.payments.failure-rate-threshold=50")
                 .run(context -> {
                     assertThat(context).hasSingleBean(HeimdallRegistry.class);
-                    // User-provided bean is empty — auto-config didn't populate it
                     assertThat(context.getBean(HeimdallRegistry.class).size()).isZero();
                 });
     }
 
     @Test
-    @DisplayName("registers HeimdallAspect bean when AOP is available")
-    void registersAspectBean() {
+    @DisplayName("registers HeimdallAspect and ResilientAspect beans")
+    void registersAspectBeans() {
         contextRunner.run(context -> {
             assertThat(context).hasSingleBean(HeimdallAspect.class);
+            assertThat(context).hasSingleBean(ResilientAspect.class);
         });
     }
 }
