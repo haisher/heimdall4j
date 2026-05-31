@@ -19,7 +19,7 @@ Monitors calls to external services and prevents cascading failures by opening t
 
 ```groovy
 dependencies {
-    implementation 'io.github.haisher:heimdall4j-circuitbreaker:0.1.2'
+    implementation 'io.github.haisher:heimdall4j-circuitbreaker:0.2.2'
 }
 ```
 
@@ -27,7 +27,7 @@ dependencies {
 <dependency>
     <groupId>io.github.haisher</groupId>
     <artifactId>heimdall4j-circuitbreaker</artifactId>
-    <version>0.1.2</version>
+    <version>0.2.2</version>
 </dependency>
 ```
 

@@ -33,7 +33,7 @@ Automatically subscribes to all Heimdall4j circuit breakers and resilience polic
 
 ```groovy
 dependencies {
-    implementation 'io.github.haisher:heimdall4j-sidecar:0.1.2'
+    implementation 'io.github.haisher:heimdall4j-sidecar:0.2.2'
     implementation 'org.springframework.boot:spring-boot-starter-actuator'
 }
 ```
@@ -42,7 +42,7 @@ dependencies {
 <dependency>
     <groupId>io.github.haisher</groupId>
     <artifactId>heimdall4j-sidecar</artifactId>
-    <version>0.1.2</version>
+    <version>0.2.2</version>
 </dependency>
 ```
 

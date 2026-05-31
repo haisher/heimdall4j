@@ -21,7 +21,7 @@ Reads `heimdall4j.instances.*` from your Spring Boot configuration and automatic
 
 ```groovy
 dependencies {
-    implementation 'io.github.haisher:heimdall4j-spring-boot:0.1.2'
+    implementation 'io.github.haisher:heimdall4j-spring-boot:0.2.2'
 }
 ```
 
@@ -29,7 +29,7 @@ dependencies {
 <dependency>
     <groupId>io.github.haisher</groupId>
     <artifactId>heimdall4j-spring-boot</artifactId>
-    <version>0.1.2</version>
+    <version>0.2.2</version>
 </dependency>
 ```
 

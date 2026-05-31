@@ -21,7 +21,7 @@ Wraps a call in a virtual thread and enforces a maximum execution time. If the c
 
 ```groovy
 dependencies {
-    implementation 'io.github.haisher:heimdall4j-timeout:0.1.2'
+    implementation 'io.github.haisher:heimdall4j-timeout:0.2.2'
 }
 ```
 
@@ -29,7 +29,7 @@ dependencies {
 <dependency>
     <groupId>io.github.haisher</groupId>
     <artifactId>heimdall4j-timeout</artifactId>
-    <version>0.1.2</version>
+    <version>0.2.2</version>
 </dependency>
 ```
 

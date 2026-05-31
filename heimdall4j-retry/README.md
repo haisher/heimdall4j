@@ -20,7 +20,7 @@ Retries a failed call with configurable delay between attempts. Supports fixed-d
 
 ```groovy
 dependencies {
-    implementation 'io.github.haisher:heimdall4j-retry:0.1.2'
+    implementation 'io.github.haisher:heimdall4j-retry:0.2.2'
 }
 ```
 
@@ -28,7 +28,7 @@ dependencies {
 <dependency>
     <groupId>io.github.haisher</groupId>
     <artifactId>heimdall4j-retry</artifactId>
-    <version>0.1.2</version>
+    <version>0.2.2</version>
 </dependency>
 ```
 

@@ -31,7 +31,7 @@ This ensures:
 
 ```groovy
 dependencies {
-    implementation 'io.github.haisher:heimdall4j-resilience:0.1.2'
+    implementation 'io.github.haisher:heimdall4j-resilience:0.2.2'
 }
 ```
 
@@ -41,7 +41,7 @@ This transitively pulls `heimdall4j-circuitbreaker`, `heimdall4j-retry`, `heimda
 <dependency>
     <groupId>io.github.haisher</groupId>
     <artifactId>heimdall4j-resilience</artifactId>
-    <version>0.1.2</version>
+    <version>0.2.2</version>
 </dependency>
 ```
 

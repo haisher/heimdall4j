@@ -34,19 +34,19 @@ flowchart LR
 ```groovy
 // Pick what you need
 dependencies {
-    implementation 'io.github.haisher:heimdall4j-circuitbreaker:0.1.2'
-    implementation 'io.github.haisher:heimdall4j-retry:0.1.2'
-    implementation 'io.github.haisher:heimdall4j-ratelimiter:0.1.2'
-    implementation 'io.github.haisher:heimdall4j-timeout:0.1.2'
+    implementation 'io.github.haisher:heimdall4j-circuitbreaker:0.2.2'
+    implementation 'io.github.haisher:heimdall4j-retry:0.2.2'
+    implementation 'io.github.haisher:heimdall4j-ratelimiter:0.2.2'
+    implementation 'io.github.haisher:heimdall4j-timeout:0.2.2'
 
     // Or use the composable policy (pulls all of the above)
-    implementation 'io.github.haisher:heimdall4j-resilience:0.1.2'
+    implementation 'io.github.haisher:heimdall4j-resilience:0.2.2'
 
     // Spring Boot integration
-    implementation 'io.github.haisher:heimdall4j-spring-boot:0.1.2'
+    implementation 'io.github.haisher:heimdall4j-spring-boot:0.2.2'
 
     // Observability (metrics, health, logging)
-    implementation 'io.github.haisher:heimdall4j-sidecar:0.1.2'
+    implementation 'io.github.haisher:heimdall4j-sidecar:0.2.2'
 }
 ```
 
@@ -55,7 +55,7 @@ dependencies {
 <dependency>
     <groupId>io.github.haisher</groupId>
     <artifactId>heimdall4j-resilience</artifactId>
-    <version>0.1.2</version>
+    <version>0.2.2</version>
 </dependency>
 ```
 
