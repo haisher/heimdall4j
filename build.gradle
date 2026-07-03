@@ -3,7 +3,7 @@ plugins {
     id 'maven-publish'
     id 'signing'
     id 'jacoco'
-    id 'org.jreleaser' version '1.24.0'
+    id 'org.jreleaser' version '1.25.0'
 }
 
 allprojects {
